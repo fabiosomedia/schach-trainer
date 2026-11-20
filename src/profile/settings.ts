@@ -1,20 +1,49 @@
 import { MAX_LEVEL, MIN_LEVEL } from '../engine/strength'
 import type { GameRecord } from './profile'
 
+export type BoardTheme = 'sandstein' | 'marmor' | 'burgstein' | 'turnier'
+
+export const BOARD_THEMES: { id: BoardTheme; label: string }[] = [
+  { id: 'sandstein', label: 'Sandstein' },
+  { id: 'marmor', label: 'Marmor' },
+  { id: 'burgstein', label: 'Burgstein' },
+  { id: 'turnier', label: 'Turnier' },
+]
+
 export type Settings = {
   level: number
   autoLevel: boolean
   sound: boolean
+  /** Farben des Bretts (CSS-Klasse `board-theme-<id>`). */
+  boardTheme: BoardTheme
+  /** Koordinaten (a–h, 1–8) am Brett anzeigen. */
+  showCoords: boolean
+  /** Zuletzt gewählte Zeitkontrolle gegen den Computer (ID aus `TIME_CONTROLS`, 'none' = ohne Uhr). */
+  timeControl: string
 }
 
 const KEY = 'schach-trainer:settings'
-const DEFAULTS: Settings = { level: 3, autoLevel: true, sound: true }
+export const DEFAULT_SETTINGS: Settings = {
+  level: 3,
+  autoLevel: true,
+  sound: true,
+  boardTheme: 'sandstein',
+  showCoords: true,
+  timeControl: 'none',
+}
+const DEFAULTS = DEFAULT_SETTINGS
 
 export function loadSettings(storage: Pick<Storage, 'getItem'> = localStorage): Settings {
   try {
-    return { ...DEFAULTS, ...JSON.parse(storage.getItem(KEY) ?? '{}') }
+    const raw = JSON.parse(storage.getItem(KEY) ?? '{}')
+    const s: Settings = { ...DEFAULTS, ...(raw && typeof raw === 'object' ? raw : {}) }
+    // Unbekannte Werte (ältere/kaputte Speicherstände) auf Standard zurücksetzen
+    if (!BOARD_THEMES.some((t) => t.id === s.boardTheme)) s.boardTheme = DEFAULTS.boardTheme
+    if (typeof s.showCoords !== 'boolean') s.showCoords = DEFAULTS.showCoords
+    if (typeof s.timeControl !== 'string') s.timeControl = DEFAULTS.timeControl
+    return s
   } catch {
-    return DEFAULTS
+    return { ...DEFAULTS }
   }
 }
 

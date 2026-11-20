@@ -1,17 +1,23 @@
-import { Chess, type Color } from 'chess.js'
+import { Chess, type Color, type Square } from 'chess.js'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { CATEGORY_INFO, isBad, type Category } from '../analysis/classify'
 import { useCoach } from '../analysis/useCoach'
 import type { StockfishEngine } from '../engine/stockfish'
 import { levelConfig, MAX_LEVEL, MIN_LEVEL } from '../engine/strength'
+import { engineMoveTime, findTimeControl, NO_CLOCK, TIME_CONTROLS, timeoutStatus } from '../game/clock'
+import { capturedBy, materialDiff } from '../game/material'
 import { findPosition, START_POSITIONS } from '../game/positions'
 import { checkedKingSquare } from '../game/status'
+import { useClock } from '../game/useClock'
 import { useGame } from '../game/useGame'
+import { BOARD_THEMES, type Settings } from '../profile/settings'
 import { gameAccuracy, type GameInput } from '../profile/profile'
 import { Board } from '../ui/Board'
 import { CoachPanel } from '../ui/CoachPanel'
 import { EvalBar } from '../ui/EvalBar'
 import { MoveList } from '../ui/MoveList'
+import '../ui/play.css'
+import { PlayerBar } from '../ui/PlayerBar'
 import { playSound } from '../ui/sound'
 
 type ColorChoice = 'w' | 'b' | 'random'
@@ -25,19 +31,75 @@ type Props = {
   sound: boolean
   onGameFinished: (g: GameInput) => void
   onReview: (pgn: string, color: Color) => void
+  /** Darstellung & Uhr (Brettfarben, Koordinaten, Zeitkontrolle) – werden gespeichert. */
+  prefs?: Pick<Settings, 'boardTheme' | 'showCoords' | 'timeControl'>
+  onPref?: <K extends 'boardTheme' | 'showCoords' | 'timeControl'>(k: K, v: Settings[K]) => void
 }
+
+const DEFAULT_PREFS: NonNullable<Props['prefs']> = { boardTheme: 'sandstein', showCoords: true, timeControl: NO_CLOCK }
+/** Remis-Angebot: Engine nimmt an, wenn die Stellung ausgeglichen ist und die Partie lang genug lief. */
+const DRAW_MAX_CP = 30
+const DRAW_MIN_MOVE = 30
+
+const other = (c: Color): Color => (c === 'w' ? 'b' : 'w')
 
 const SUMMARY_ORDER: Category[] = ['best', 'good', 'inaccuracy', 'mistake', 'blunder']
 
 export function PlayView(props: Props) {
   const { engines, level, onLevelChange, autoLevel, onAutoLevelChange, sound, onGameFinished, onReview } = props
+  const prefs = props.prefs ?? DEFAULT_PREFS
+  const onPref = props.onPref ?? (() => {})
   const [colorChoice, setColorChoice] = useState<ColorChoice>('w')
   const [startId, setStartId] = useState('start')
   const [goal, setGoal] = useState<string | null>(null)
   const [hint, setHint] = useState({ fen: '', level: 0 })
 
-  const game = useGame(engines?.play ?? null, level)
+  // Zeitkontrolle der laufenden Partie (Auswahl gilt erst ab „Neues Spiel“)
+  const [gameTc, setGameTc] = useState(() => findTimeControl(prefs.timeControl))
+  const clockRef = useRef<{ remaining: (c: Color) => number | null; inc: number; engine: Color }>(null)
+  const engineTimeLimit = useCallback(() => {
+    const c = clockRef.current
+    const left = c?.remaining(c.engine)
+    return c && left != null ? engineMoveTime(left, c.inc) : null
+  }, [])
+
+  const game = useGame(engines?.play ?? null, level, { engineTimeLimit })
   const { chess, fen, moves, playerColor, status, thinking, isPlayerTurn, gameNo } = game
+
+  const clock = useClock({
+    tc: gameTc,
+    gameNo,
+    moves,
+    turn: chess.turn(),
+    over: status.over,
+    onFlag: (c) => game.finish(timeoutStatus(chess, c)),
+  })
+  clockRef.current = { remaining: clock.remaining, inc: clock.incrementMs, engine: other(playerColor) }
+
+  // Brett drehen (nur Ansicht) – bei neuer Partie wieder aus Spielersicht
+  const [flipped, setFlipped] = useState(false)
+  const orientation: Color = flipped ? other(playerColor) : playerColor
+  useEffect(() => setFlipped(false), [gameNo])
+
+  // Vorgemerkter Zug (Premove), solange Stockfish denkt
+  const [premove, setPremove] = useState<{ from: Square; to: Square } | null>(null)
+  const canPremove = !status.over && !isPlayerTurn && chess.turn() !== playerColor && !!engines
+  useEffect(() => setPremove(null), [gameNo, status.over])
+  useEffect(() => {
+    if (!premove || !isPlayerTurn) return
+    const { from, to } = premove
+    setPremove(null)
+    if (game.legalTargets(from).includes(to)) game.playMove(from, to, game.needsPromotion(from, to) ? 'q' : undefined)
+  }, [premove, isPlayerTurn, game])
+
+  // Remis-Angebot
+  const [drawMsg, setDrawMsg] = useState<string | null>(null)
+  useEffect(() => {
+    if (!drawMsg) return
+    const t = setTimeout(() => setDrawMsg(null), 4000)
+    return () => clearTimeout(t)
+  }, [drawMsg])
+  useEffect(() => setDrawMsg(null), [gameNo])
   const coach = useCoach(engines?.coach ?? null, moves, fen, playerColor)
 
   const checkSquare = useMemo(() => checkedKingSquare(chess), [chess, fen])
@@ -148,6 +210,7 @@ export function PlayView(props: Props) {
   const startPos = findPosition(startId)
   const startNewGame = () => {
     const chosen: Color = colorChoice === 'random' ? (Math.random() < 0.5 ? 'w' : 'b') : colorChoice
+    setGameTc(findTimeControl(prefs.timeControl))
     game.newGame(startPos.color ?? chosen, startPos.fen)
     setGoal(startPos.goal ? `${startPos.name}: ${startPos.goal}` : null)
   }
@@ -161,6 +224,39 @@ export function PlayView(props: Props) {
     URL.revokeObjectURL(a.href)
   }
 
+  const offerDraw = () => {
+    const ev = coach.currentEval?.score ?? null
+    const moveNo = Number(fen.split(' ')[5]) || 1
+    if (ev && ev.type === 'cp' && Math.abs(ev.value) <= DRAW_MAX_CP && moveNo >= DRAW_MIN_MOVE) {
+      game.finish({ over: true, result: '1/2-1/2', reason: 'Remis vereinbart' })
+      return
+    }
+    setDrawMsg(
+      !ev
+        ? 'Stockfish überlegt noch – versuch es gleich nochmal.'
+        : moveNo < DRAW_MIN_MOVE
+          ? `Stockfish lehnt ab: Vor dem ${DRAW_MIN_MOVE}. Zug wird weitergespielt.`
+          : 'Stockfish lehnt das Remis ab und spielt weiter.',
+    )
+  }
+
+  // Spielerleisten: geschlagene Figuren + Materialvorsprung
+  const captured = useMemo(() => capturedBy(moves), [moves])
+  const diff = useMemo(() => materialDiff(new Chess(fen)), [fen])
+  const bar = (c: Color, position: 'top' | 'bottom') => (
+    <PlayerBar
+      position={position}
+      color={c}
+      name={c === playerColor ? 'Du' : `Stockfish · Stufe ${cfg.level}`}
+      captured={captured[c]}
+      advantage={c === 'w' ? diff : -diff}
+      timeMs={clock.active ? clock[c] : null}
+      ticking={clock.running === c && !status.over}
+      toMove={!status.over && chess.turn() === c}
+    />
+  )
+  const timedOut = status.over && status.reason === 'Zeit abgelaufen'
+
   let statusText: string
   if (status.over) {
     const youWon =
@@ -171,6 +267,8 @@ export function PlayView(props: Props) {
   else if (thinking) statusText = 'Stockfish denkt …'
   else if (isPlayerTurn) statusText = checkSquare ? 'Schach! Du bist am Zug' : 'Du bist am Zug'
   else statusText = '…'
+  if (!status.over && premove && !viewing) statusText = `Stockfish denkt … · vorgemerkt: ${premove.from}–${premove.to}`
+  if (!status.over && drawMsg && !viewing) statusText = drawMsg
   if (viewing) {
     const m = viewPly! >= 0 ? moves[viewPly!] : null
     const no = m ? Number(m.before.split(' ')[5]) : 0
@@ -180,17 +278,24 @@ export function PlayView(props: Props) {
   const counts = SUMMARY_ORDER.map((c) => [c, analysisList.filter((a) => a.category === c).length] as const)
 
   return (
-    <main className="layout" ref={rootRef}>
+    <main className={`layout play-view ${clock.active ? 'timed' : ''}`} ref={rootRef}>
       <section className="board-col">
         <div className={`status ${status.over && !viewing ? 'over' : ''} ${thinking && !viewing ? 'thinking' : ''} ${viewing ? 'viewing' : ''}`}>
           {statusText}
         </div>
         <div className="board-row">
-          <EvalBar score={(viewing ? coach.evals[viewFen]?.score : coach.currentEval?.score) ?? null} orientation={playerColor} />
+          <EvalBar score={(viewing ? coach.evals[viewFen]?.score : coach.currentEval?.score) ?? null} orientation={orientation} />
+          <div className="play-stack">
+          {bar(other(orientation), 'top')}
           <Board
             id="play"
             fen={viewFen}
-            orientation={playerColor}
+            orientation={orientation}
+            showCoordinates={prefs.showCoords}
+            premoveColor={canPremove && !viewing ? playerColor : undefined}
+            premove={viewing ? null : premove}
+            onPremove={(from, to) => setPremove({ from, to })}
+            onCancelPremove={() => setPremove(null)}
             lastMove={viewing ? (viewPly! >= 0 ? moves[viewPly!] : undefined) : lastMove}
             checkSquare={viewing ? viewCheck : checkSquare}
             canMove={isPlayerTurn && !viewing}
@@ -200,6 +305,8 @@ export function PlayView(props: Props) {
             arrows={arrows}
             hintSquares={viewing ? [] : hintSquares}
           />
+          {bar(orientation, 'bottom')}
+          </div>
         </div>
         <div className="row nav">
           <button onClick={() => goTo(-1)} disabled={moves.length === 0 || current === -1} title="Zum Anfang">
@@ -219,7 +326,15 @@ export function PlayView(props: Props) {
           >
             {viewing ? '⏭ Aktuell' : '⏭'}
           </button>
+          <button onClick={() => setFlipped((f) => !f)} aria-pressed={flipped} title="Brett drehen" className="flip-btn">
+            ⇅<span className="btn-label"> Brett drehen</span>
+          </button>
         </div>
+        {premove && !status.over && (
+          <button className="premove-cancel" onClick={() => setPremove(null)} title="Vorgemerkten Zug löschen (Rechtsklick aufs Brett)">
+            ✕ Vormerkung {premove.from}–{premove.to} löschen
+          </button>
+        )}
       </section>
 
       <aside className="panel">
@@ -267,13 +382,16 @@ export function PlayView(props: Props) {
           <h2>Züge</h2>
           <MoveList moves={moves} analyses={coach.analyses} selected={viewing ? viewPly! : undefined} onSelect={goTo} />
           <div className="row">
-            <button onClick={game.undo} disabled={moves.length === 0}>
+            <button onClick={game.undo} disabled={moves.length === 0 || timedOut}>
               ↶ Zurück
             </button>
             <button onClick={game.resign} disabled={status.over || moves.length === 0}>
               🏳 Aufgeben
             </button>
           </div>
+          <button onClick={offerDraw} disabled={status.over || moves.length < 2} className="draw-btn">
+            ½ Remis anbieten
+          </button>
           <button onClick={downloadPgn} disabled={moves.length === 0}>
             ⤓ PGN herunterladen
           </button>
@@ -309,6 +427,16 @@ export function PlayView(props: Props) {
               ))}
             </select>
           </label>
+          <div className="field">
+            <span>Bedenkzeit</span>
+            <div className="seg tc-seg">
+              {TIME_CONTROLS.map((t) => (
+                <button key={t.id} aria-pressed={prefs.timeControl === t.id} onClick={() => onPref('timeControl', t.id)}>
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          </div>
           {startPos.color && <p className="muted-text small">Du spielst hier immer {startPos.color === 'w' ? 'Weiss' : 'Schwarz'}.</p>}
 
           <label className="level">
@@ -334,6 +462,27 @@ export function PlayView(props: Props) {
           <button className="primary" onClick={startNewGame}>
             Neues Spiel
           </button>
+        </div>
+        <div className="card board-settings">
+          <h2>Brett</h2>
+          <div className="theme-picker">
+            {BOARD_THEMES.map((t) => (
+              <button
+                key={t.id}
+                className={`theme-swatch board-theme-${t.id}`}
+                aria-pressed={prefs.boardTheme === t.id}
+                onClick={() => onPref('boardTheme', t.id)}
+                title={`Brettfarben: ${t.label}`}
+              >
+                <span className="swatch" aria-hidden="true" />
+                {t.label}
+              </button>
+            ))}
+          </div>
+          <label className="check">
+            <input type="checkbox" checked={prefs.showCoords} onChange={(e) => onPref('showCoords', e.target.checked)} />
+            Koordinaten anzeigen
+          </label>
         </div>
       </aside>
     </main>
