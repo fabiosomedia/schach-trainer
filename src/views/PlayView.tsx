@@ -24,12 +24,13 @@ type Props = {
   onAutoLevelChange: (on: boolean) => void
   sound: boolean
   onGameFinished: (g: GameInput) => void
+  onReview: (pgn: string, color: Color) => void
 }
 
 const SUMMARY_ORDER: Category[] = ['best', 'good', 'inaccuracy', 'mistake', 'blunder']
 
 export function PlayView(props: Props) {
-  const { engines, level, onLevelChange, autoLevel, onAutoLevelChange, sound, onGameFinished } = props
+  const { engines, level, onLevelChange, autoLevel, onAutoLevelChange, sound, onGameFinished, onReview } = props
   const [colorChoice, setColorChoice] = useState<ColorChoice>('w')
   const [startId, setStartId] = useState('start')
   const [goal, setGoal] = useState<string | null>(null)
@@ -176,6 +177,9 @@ export function PlayView(props: Props) {
             {counts[3][1] + counts[4][1] > 0 && (
               <p className="muted-text small">Deine Fehler landen als Puzzles im Training.</p>
             )}
+            <button className="primary" onClick={() => onReview(chess.pgn(), playerColor)}>
+              🔍 Partie genau analysieren
+            </button>
           </div>
         )}
 

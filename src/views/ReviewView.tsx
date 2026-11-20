@@ -15,7 +15,8 @@ type Props = {
 }
 
 const ORDER: Category[] = ['best', 'good', 'inaccuracy', 'mistake', 'blunder']
-const DEPTH = 12
+/** Tiefer als im Live-Coach (13): hier darf es ein paar Sekunden dauern. */
+const DEPTH = 16
 
 export function ReviewView({ engine, initial }: Props) {
   const [pgn, setPgn] = useState(initial?.pgn ?? '')
@@ -25,6 +26,9 @@ export function ReviewView({ engine, initial }: Props) {
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
   const [ply, setPly] = useState(-1)
   const [error, setError] = useState<string | null>(null)
+  /** Index in der besseren Fortsetzung (null = normale Partie-Ansicht). */
+  const [variation, setVariation] = useState<number | null>(null)
+  useEffect(() => setVariation(null), [ply])
   const run = useRef(0)
 
   const analyse = useCallback(
@@ -99,28 +103,53 @@ export function ReviewView({ engine, initial }: Props) {
       : []
   const noop = () => []
 
+  // Bessere Fortsetzung: Stellungen nach jedem Zug der Engine-Variante
+  const varLine = useMemo(() => {
+    if (!sel || !sel.bestSan || sel.uci === sel.bestUci) return []
+    const c = new Chess(sel.fenBefore)
+    const out: { san: string; fen: string; move: Move }[] = []
+    for (const san of sel.bestLineSan) {
+      try {
+        const m = c.move(san)
+        out.push({ san, fen: c.fen(), move: m })
+      } catch {
+        break
+      }
+    }
+    return out
+  }, [sel])
+  const varStep = variation !== null ? varLine[variation] : undefined
+  const startFullmove = sel ? Number(sel.fenBefore.split(' ')[5] ?? 1) : 1
+  const varLabel = (i: number) => {
+    const white = sel ? (sel.color === 'w') === (i % 2 === 0) : true
+    const no = startFullmove + Math.floor((i + (sel?.color === 'b' ? 1 : 0)) / 2)
+    return white ? `${no}.` : i === 0 ? `${no}…` : ''
+  }
+
   return (
     <main className="layout">
       <section className="board-col">
         <div className="status">
           {progress && progress.done < progress.total
             ? `Analysiere … ${progress.done}/${progress.total}`
-            : selMove
+            : varStep
+              ? `Bessere Fortsetzung – Zug ${variation! + 1} von ${varLine.length}`
+              : selMove
               ? `${Math.floor(ply / 2) + 1}${selMove.color === 'w' ? '.' : '…'} ${selMove.san}${showBefore ? ' – Stellung vor dem Zug' : ''}`
               : 'Startstellung'}
         </div>
         <div className="board-row">
           <Board
             id="review"
-            fen={fen}
+            fen={varStep ? varStep.fen : fen}
             orientation={color}
-            lastMove={showBefore ? undefined : selMove}
+            lastMove={varStep ? varStep.move : showBefore ? undefined : selMove}
             checkSquare={null}
             canMove={false}
             legalTargets={noop}
             needsPromotion={() => false}
             onMove={() => false}
-            arrows={arrows}
+            arrows={varStep ? [] : arrows}
           />
         </div>
         <div className="row nav">
@@ -173,7 +202,35 @@ export function ReviewView({ engine, initial }: Props) {
                     {t.text}
                   </p>
                 ))}
-                {showBefore && (
+                {varLine.length > 0 && (
+                  <div className="variation">
+                    <span className="variation-title">So wäre es besser gegangen:</span>
+                    <div className="variation-moves">
+                      {varLine.map((v, i) => (
+                        <button
+                          key={i}
+                          className={variation === i ? 'active' : ''}
+                          onClick={() => setVariation(i)}
+                          title="Stellung nach diesem Zug zeigen"
+                        >
+                          {varLabel(i)} {v.san}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="row">
+                      <button
+                        onClick={() => setVariation((v) => (v === null ? 0 : Math.min(varLine.length - 1, v + 1)))}
+                        disabled={variation === varLine.length - 1}
+                      >
+                        {variation === null ? '▶ Durchspielen' : '▶ Weiter'}
+                      </button>
+                      <button onClick={() => setVariation(null)} disabled={variation === null}>
+                        ↩ Zurück zur Partie
+                      </button>
+                    </div>
+                  </div>
+                )}
+                {showBefore && variation === null && (
                   <p className="coach-legend">
                     <span className="dot orange" /> gespielt <span className="dot green" /> besser
                   </p>

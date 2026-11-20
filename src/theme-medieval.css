@@ -228,3 +228,34 @@ td.loss {
   color: #fff6e0;
   text-shadow: 0 1px 0 rgba(0, 0, 0, 0.35);
 }
+
+/* Bessere Fortsetzung in der Analyse */
+.variation {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border: 1px dashed var(--border);
+  border-radius: 4px;
+  background: rgba(47, 125, 63, 0.07);
+}
+.variation-title {
+  font-family: 'Cinzel', serif;
+  font-weight: 700;
+  color: #2f7d3f;
+  font-size: 14px;
+}
+.variation-moves {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.variation-moves button {
+  font-family: 'IM Fell English', Georgia, serif;
+  font-size: 15px;
+  padding: 3px 8px;
+}
+.variation-moves button.active {
+  background: linear-gradient(180deg, #bfe0b8, #92c48a);
+  border-color: #2f7d3f;
+}

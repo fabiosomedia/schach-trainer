@@ -84,6 +84,11 @@ export default function App() {
     return () => clearTimeout(t)
   }, [toast])
 
+  const openReview = useCallback((pgn: string, color: Color) => {
+    setReview({ pgn, color, key: Date.now() })
+    setTab('review')
+  }, [])
+
   const due = duePuzzles(profile).length
 
   return (
@@ -125,6 +130,7 @@ export default function App() {
           onAutoLevelChange={(on) => set('autoLevel', on)}
           sound={settings.sound}
           onGameFinished={onGameFinished}
+          onReview={openReview}
         />
       </div>
       {tab === 'train' && <TrainingView engine={engines?.coach ?? null} profile={profile} onAnswer={onAnswer} />}
@@ -133,10 +139,7 @@ export default function App() {
         <StatsView
           profile={profile}
           onReset={() => setProfile(emptyProfile())}
-          onReview={(pgn, color) => {
-            setReview({ pgn, color, key: Date.now() })
-            setTab('review')
-          }}
+          onReview={openReview}
         />
       )}
 
