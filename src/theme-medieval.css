@@ -1,0 +1,230 @@
+/* ================= Mittelalter-Look =================
+   Wird nach index.css geladen und überschreibt dessen Grundstil. */
+
+.top h1 {
+  font-family: 'Cinzel Decorative', 'Cinzel', serif;
+  color: #f1e2bd;
+  text-shadow: 0 2px 0 #000, 0 0 18px rgba(212, 169, 74, 0.35);
+  font-size: 30px;
+}
+.top h1 span {
+  color: var(--gold);
+}
+
+/* Pergament-Flächen */
+.card,
+.status,
+.tabs,
+.toast,
+.promo-box {
+  background:
+    radial-gradient(ellipse at 30% 20%, rgba(255, 250, 230, 0.55), transparent 60%),
+    radial-gradient(ellipse at 80% 90%, rgba(140, 95, 40, 0.18), transparent 55%),
+    var(--card);
+  color: var(--text);
+  border: 1px solid var(--border);
+  box-shadow:
+    inset 0 0 30px rgba(120, 80, 30, 0.35),
+    0 0 0 3px rgba(58, 36, 20, 0.85),
+    0 0 0 4px rgba(212, 169, 74, 0.6),
+    0 10px 25px rgba(0, 0, 0, 0.5);
+  border-radius: 6px;
+}
+.coach {
+  border-color: var(--border);
+}
+.card h2 {
+  font-family: 'Cinzel', serif;
+  color: var(--accent-2);
+  letter-spacing: 2px;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.card h2::before {
+  content: '⚜';
+  color: var(--accent);
+  font-size: 16px;
+}
+.card h2::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, var(--border), transparent);
+}
+.status {
+  font-family: 'Cinzel', serif;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  margin-bottom: 22px;
+}
+.status.over {
+  background: linear-gradient(90deg, #f3e2b4, #e5c97f);
+  border-color: var(--accent);
+  color: var(--accent-2);
+}
+.status.thinking {
+  color: var(--accent-2);
+}
+.status.ok {
+  color: #2f7a3b;
+  border-color: #2f7a3b;
+}
+.status.bad {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+/* Knöpfe: Pergament mit Holzrand, Hauptknopf als rotes Wachssiegel */
+button {
+  font-family: 'Cinzel', serif;
+  font-weight: 600;
+  font-size: 14px;
+  background: linear-gradient(180deg, #f1e3c0, #d8c08e);
+  color: var(--text);
+  border: 1px solid #7a5a2e;
+  border-radius: 4px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+button:hover:not(:disabled) {
+  border-color: var(--accent-2);
+  background: linear-gradient(180deg, #f6ead0, #e2cc9b);
+}
+button.primary {
+  background: radial-gradient(ellipse at 50% 30%, #b8322a, #7d1914 70%);
+  color: #f6e2b0;
+  border: 1px solid #4e0e0b;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.5);
+  letter-spacing: 1px;
+  box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.45), 0 2px 4px rgba(0, 0, 0, 0.4);
+}
+button.primary:hover:not(:disabled) {
+  background: radial-gradient(ellipse at 50% 30%, #c93a31, #8a1c16 70%);
+}
+.seg button[aria-pressed='true'],
+.tabs button[aria-pressed='true'] {
+  background: linear-gradient(180deg, #e2c27a, #c9a254);
+  box-shadow: inset 0 0 0 1px var(--accent-2), inset 0 2px 4px rgba(0, 0, 0, 0.25);
+  border-color: var(--accent-2);
+}
+.tabs {
+  padding: 5px;
+}
+.tabs button:not([aria-pressed='true']) {
+  background: transparent;
+  box-shadow: none;
+  border-color: transparent;
+}
+button.link {
+  font-family: inherit;
+  background: none;
+  border: none;
+  box-shadow: none;
+  color: var(--accent-2);
+}
+button.danger {
+  background: transparent;
+  color: #e8a49f;
+  border-color: rgba(232, 164, 159, 0.5);
+  box-shadow: none;
+}
+
+/* Innenflächen auf Pergament */
+.move-list,
+select,
+textarea,
+.spark {
+  background: rgba(120, 85, 40, 0.12);
+  border: 1px solid rgba(122, 90, 46, 0.45);
+  color: var(--text);
+}
+.move-list {
+  font-family: 'IM Fell English', Georgia, serif;
+  font-size: 16px;
+}
+.move-row:nth-child(even) {
+  background: rgba(120, 85, 40, 0.1);
+}
+.move.selected {
+  background: rgba(184, 134, 42, 0.35);
+}
+.coach-move,
+.coach-eval {
+  font-family: 'Cinzel', serif;
+}
+.coach-text {
+  font-size: 16px;
+}
+.coach-tip {
+  border-left-color: var(--accent-2);
+  background: rgba(142, 31, 26, 0.07);
+  font-style: italic;
+}
+.badge {
+  font-family: 'Cinzel', serif;
+  border-radius: 3px;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.25);
+}
+.level-head strong,
+.kpi strong,
+.summary-acc strong {
+  color: var(--accent-2);
+  font-family: 'Cinzel', serif;
+}
+.games th {
+  font-family: 'Cinzel', serif;
+  border-bottom-color: var(--border);
+}
+.games td {
+  border-bottom-color: rgba(122, 90, 46, 0.25);
+}
+td.win {
+  color: #2f7a3b;
+}
+td.loss {
+  color: var(--accent-2);
+}
+.spark-bar.win {
+  background: #3f8a4a;
+}
+.spark-bar.loss {
+  background: #a3322a;
+}
+.spark-bar.draw {
+  background: #8a7a5a;
+}
+.pill {
+  background: var(--accent-2);
+  color: #f6e2b0;
+}
+.muted,
+.muted-text,
+.check,
+.kpi span,
+.kpi small,
+.weak-list p {
+  color: var(--muted);
+}
+
+/* Brett & Eval-Leiste: Platz für den Holzrahmen */
+.board-row {
+  gap: 24px;
+  padding: 13px 13px;
+}
+.eval-bar {
+  border: 2px solid var(--gold);
+  background: #241509;
+  border-radius: 3px;
+  box-shadow: 0 0 0 3px var(--wood);
+}
+.eval-white {
+  background: linear-gradient(90deg, #f3e6c4, #dcc495);
+}
+.promo-overlay {
+  background: rgba(20, 12, 6, 0.6);
+}
+.badge {
+  color: #fff6e0;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.35);
+}

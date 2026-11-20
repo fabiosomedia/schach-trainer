@@ -32,6 +32,7 @@ await page.waitForSelector('.jump button', { timeout: 30000 })
 await page.waitForFunction(() => !document.querySelector('.status:not([hidden])')?.textContent?.includes('Analysiere'), null, { timeout: 30000 })
 console.log('Fehler-Sprungliste:', await page.$$eval('.jump button', (b) => b.map((x) => x.textContent)))
 await page.click('.jump button')
+await page.waitForTimeout(600) // Brett-Animation abwarten
 console.log('Coach:', (await page.textContent('.coach .badge:visible'))?.trim(), '–', (await page.textContent('.coach .coach-text:visible'))?.trim())
 await page.screenshot({ path: `${dir}/p4-review.png` })
 

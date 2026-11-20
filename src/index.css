@@ -1,19 +1,22 @@
 :root {
-  --bg: #12141a;
-  --bg-2: #1b1e27;
-  --card: #20242f;
-  --border: #2e3342;
-  --text: #e8eaf0;
-  --muted: #8a90a2;
-  --accent: #f0a63a;
-  --accent-2: #ffcf7a;
-  --sq-light: #e9dcc4;
-  --sq-dark: #9c7a5b;
-  --last-move: rgba(240, 166, 58, 0.45);
-  --danger: #ff5c5c;
+  /* Mittelalter-Thema: Pergament auf dunklem Eichenholz, Gold und Siegelrot */
+  --bg: #1d140c;
+  --bg-2: #dcc79c; /* dunkleres Pergament für Innenflächen */
+  --card: #ead9b2; /* Pergament */
+  --border: #8a6a3a;
+  --text: #2b1b0c; /* Tinte */
+  --muted: #6e5434;
+  --accent: #b8862a; /* Gold */
+  --accent-2: #8e1f1a; /* Siegelrot */
+  --gold: #d4a94a;
+  --wood: #3a2414;
+  --sq-light: #e4cf9f; /* Sandstein */
+  --sq-dark: #7d5534; /* Nussbaum */
+  --last-move: rgba(212, 169, 74, 0.55);
+  --danger: #a3221c;
 
-  color-scheme: dark;
-  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  color-scheme: light;
+  font-family: 'IM Fell English', Georgia, 'Times New Roman', serif;
   color: var(--text);
   background: var(--bg);
 }
@@ -25,7 +28,13 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background: radial-gradient(1200px 600px at 20% -10%, #2a2340 0%, transparent 60%), var(--bg);
+  /* Eichenholz: feine Maserung + Vignette, ganz ohne Bilddateien */
+  background:
+    radial-gradient(ellipse at center, transparent 40%, rgba(0, 0, 0, 0.55) 100%),
+    repeating-linear-gradient(92deg, rgba(255, 220, 160, 0.025) 0 2px, transparent 2px 7px),
+    repeating-linear-gradient(88deg, rgba(0, 0, 0, 0.18) 0 1px, transparent 1px 13px),
+    linear-gradient(180deg, #2b1c10, #1a110a);
+  background-attachment: fixed;
 }
 
 button {
@@ -84,7 +93,7 @@ button.primary {
 .board-wrap {
   position: relative;
   /* So breit wie möglich, aber nie höher als das Fenster (Header + Status ≈ 150 px) */
-  width: min(100%, max(260px, calc(100dvh - 150px)));
+  width: min(100%, max(260px, calc(100dvh - 200px)));
   margin: 0 auto;
 }
 

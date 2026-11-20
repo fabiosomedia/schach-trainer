@@ -1,11 +1,11 @@
 export type Category = 'best' | 'good' | 'inaccuracy' | 'mistake' | 'blunder'
 
 export const CATEGORY_INFO: Record<Category, { label: string; symbol: string; color: string }> = {
-  best: { label: 'Bester Zug', symbol: '★', color: '#5fd38a' },
-  good: { label: 'Guter Zug', symbol: '✓', color: '#9fd36a' },
-  inaccuracy: { label: 'Ungenau', symbol: '?!', color: '#f0c43a' },
-  mistake: { label: 'Fehler', symbol: '?', color: '#f08a3a' },
-  blunder: { label: 'Patzer', symbol: '??', color: '#ff5c5c' },
+  best: { label: 'Bester Zug', symbol: '★', color: '#2f7d3f' },
+  good: { label: 'Guter Zug', symbol: '✓', color: '#5e8a24' },
+  inaccuracy: { label: 'Ungenau', symbol: '?!', color: '#b07c00' },
+  mistake: { label: 'Fehler', symbol: '?', color: '#c25a12' },
+  blunder: { label: 'Patzer', symbol: '??', color: '#a3221c' },
 }
 
 /**

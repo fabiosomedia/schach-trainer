@@ -105,7 +105,13 @@ export function Board(props: Props) {
           animationDurationInMs: 220,
           darkSquareStyle: { backgroundColor: 'var(--sq-dark)' },
           lightSquareStyle: { backgroundColor: 'var(--sq-light)' },
-          boardStyle: { borderRadius: 10, overflow: 'hidden', boxShadow: '0 12px 40px rgba(0,0,0,.45)' },
+          // Holzrahmen mit Goldlinien (als Schatten, damit er keinen Platz im Layout braucht)
+          boardStyle: {
+            borderRadius: 3,
+            overflow: 'hidden',
+            boxShadow:
+              '0 0 0 2px var(--gold), 0 0 0 11px var(--wood), 0 0 0 13px var(--gold), 0 20px 45px rgba(0,0,0,.7)',
+          },
         }}
       />
       {promo && (
