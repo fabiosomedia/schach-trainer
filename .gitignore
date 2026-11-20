@@ -25,3 +25,6 @@ dist-ssr
 
 # Generiert von scripts/copy-engine.mjs
 public/stockfish/
+
+# Arbeitskopien von Claude-Agents
+.claude/
