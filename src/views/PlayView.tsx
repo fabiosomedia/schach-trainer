@@ -1,6 +1,6 @@
 import { Chess, type Color, type Square } from 'chess.js'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { CATEGORY_INFO, isBad, type Category } from '../analysis/classify'
+import { CATEGORIES, CATEGORY_INFO, isBad, type Category } from '../analysis/classify'
 import { useCoach } from '../analysis/useCoach'
 import type { StockfishEngine } from '../engine/stockfish'
 import { levelConfig, MAX_LEVEL, MIN_LEVEL } from '../engine/strength'
@@ -43,7 +43,7 @@ const DRAW_MIN_MOVE = 30
 
 const other = (c: Color): Color => (c === 'w' ? 'b' : 'w')
 
-const SUMMARY_ORDER: Category[] = ['best', 'good', 'inaccuracy', 'mistake', 'blunder']
+const SUMMARY_ORDER: Category[] = CATEGORIES
 
 export function PlayView(props: Props) {
   const { engines, level, onLevelChange, autoLevel, onAutoLevelChange, sound, onGameFinished, onReview } = props
@@ -352,7 +352,7 @@ export function PlayView(props: Props) {
                 </span>
               ))}
             </div>
-            {counts[3][1] + counts[4][1] > 0 && (
+            {analysisList.some((a) => a.category === 'mistake' || a.category === 'blunder') && (
               <p className="muted-text small">Deine Fehler landen als Puzzles im Training.</p>
             )}
             <button className="primary" onClick={() => onReview(chess.pgn(), playerColor)}>

@@ -29,7 +29,7 @@
 /* ---------- Brett mit Leisten darüber und darunter ---------- */
 .play-view {
   --bar-h: 36px;
-  --bar-gap: 17px; /* Platz für den Holzrahmen (13 px Schatten) */
+  --bar-gap: 15px; /* Platz für den Holzrahmen (13 px Schatten) */
 }
 .play-stack {
   display: flex;
@@ -38,7 +38,7 @@
   flex: 0 1 auto;
   min-width: 0;
   /* So breit wie möglich, aber Brett + Leisten nie höher als das Fenster */
-  width: min(100%, max(240px, calc(100dvh - 255px - 2 * (var(--bar-h) + var(--bar-gap)))));
+  width: min(100%, max(240px, calc(100dvh - 222px - 2 * (var(--bar-h) + var(--bar-gap)))));
 }
 .board-row .play-stack .board-wrap {
   width: 100%;
