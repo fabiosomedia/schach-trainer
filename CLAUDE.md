@@ -20,7 +20,8 @@ Node liegt portabel in `C:\Users\fbrazerol\tools\node` (im User-PATH; in alten S
 - `npm run build` – Typecheck + Produktions-Build
 - Browser-Tests (brauchen `npm run build` + laufendes `npm run preview` auf :4173):
   `node scripts/e2e-smoke.mjs` (Spiel + Coach), `e2e-phase3.mjs` (Profil, Puzzle, Statistik), `e2e-phase4.mjs` (Endspiel, PGN-Analyse)
-  Selektoren: Brettfelder über `#<board-id>-square-e4` (IDs: play / puzzle / review); die Spielansicht bleibt versteckt gemountet → `:visible` nutzen
+  `e2e-online.mjs` (zwei Browser-Seiten spielen online gegeneinander; braucht Internet für den PeerJS-Server)
+  Selektoren: Brettfelder über `#<board-id>-square-e4` (IDs: play / puzzle / review / online); die Spielansicht bleibt versteckt gemountet → `:visible` nutzen
 - `npm install` kopiert die Engine via `postinstall` nach `public/stockfish/` (nicht committen)
 
 ## Struktur
@@ -29,7 +30,8 @@ Node liegt portabel in `C:\Users\fbrazerol\tools\node` (im User-PATH; in alten S
 - `src/game/positions.ts` – Startstellungen (Eröffnungen, Endspiel-Übungen)
 - `src/analysis/` – `explain.ts` (Einstufung + Motiv-Erkennung → Erklärtext), `useCoach.ts` (2. Engine, Analyse-Cache), `eval.ts`, `pieces.ts`
 - `src/profile/` – `profile.ts` (Partien, Fehler, Puzzles/Leitner, Schwächen; localStorage), `settings.ts` (Stufe, Auto-Stufe, Ton), `motifInfo.ts`
-- `src/views/` – PlayView, TrainingView, ReviewView, StatsView; `src/ui/` – Board, CoachPanel, EvalBar, MoveList, sound
+- `src/online/` – Online-Partien per WebRTC (`peerjs`, gratis öffentlicher PeerServer nur zur Vermittlung): `protocol.ts` (Nachrichten, Zustand, Gastgeber führt die Uhr), `clock.ts`, `connection.ts` (Verbindung, Herzschlag, Wiederverbinden)
+- `src/views/` – PlayView, TrainingView, ReviewView, StatsView, OnlineView (`?join=<peerId>` öffnet den Tab); `src/ui/` – Board, CoachPanel, EvalBar, MoveList, sound
 
 ## Konventionen
 - UI-Texte auf Deutsch (Hochdeutsch, „ss“ statt „ß“).
