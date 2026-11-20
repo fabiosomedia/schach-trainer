@@ -1,6 +1,14 @@
-export type Category = 'best' | 'good' | 'inaccuracy' | 'mistake' | 'blunder'
+/** 'book' = Buchzug: Zug bleibt in der bekannten Eröffnungstheorie (Lichess-Eröffnungsliste). */
+export type Category = 'book' | 'best' | 'good' | 'inaccuracy' | 'mistake' | 'blunder'
+
+/** Alle Kategorien in Anzeige-Reihenfolge. */
+export const CATEGORIES: Category[] = ['book', 'best', 'good', 'inaccuracy', 'mistake', 'blunder']
+
+/** Leerer Zähler für alle Kategorien (alte Profile ohne 'book' → mit `{ ...emptyCounts(), ...alt }` ergänzen). */
+export const emptyCounts = (): Record<Category, number> => ({ book: 0, best: 0, good: 0, inaccuracy: 0, mistake: 0, blunder: 0 })
 
 export const CATEGORY_INFO: Record<Category, { label: string; symbol: string; color: string }> = {
+  book: { label: 'Buchzug', symbol: '📖', color: '#7a6a55' },
   best: { label: 'Bester Zug', symbol: '★', color: '#2f7d3f' },
   good: { label: 'Guter Zug', symbol: '✓', color: '#5e8a24' },
   inaccuracy: { label: 'Ungenau', symbol: '?!', color: '#b07c00' },

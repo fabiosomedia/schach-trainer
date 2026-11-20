@@ -3,6 +3,10 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { SearchResult, StockfishEngine } from '../engine/stockfish'
 import type { Score } from '../engine/uci'
 import { analyseMove, positionScore, type MoveAnalysis } from './explain'
+import { loadOpenings } from './openings'
+
+/** Eröffnungsbuch laden; schlägt das fehl, wird ohne Buchzüge analysiert. */
+const bookOrNull = () => loadOpenings().catch(() => null)
 
 const ANALYSIS_DEPTH = 13
 
@@ -57,7 +61,7 @@ export function useCoach(engine: StockfishEngine | null, moves: Move[], fen: str
       const key = `${ply}:${m.before}:${m.lan}`
       if (pending.current.has(key)) return
       pending.current.add(key)
-      Promise.all([analyse(m.before), analyse(m.after)]).then(([before, after]) => {
+      Promise.all([analyse(m.before), analyse(m.after), bookOrNull()]).then(([before, after, book]) => {
         const a = analyseMove(
           {
             ply,
@@ -72,6 +76,7 @@ export function useCoach(engine: StockfishEngine | null, moves: Move[], fen: str
           },
           before,
           after,
+          { book },
         )
         setAnalyses((prev) => ({ ...prev, [ply]: a }))
       })

@@ -1,8 +1,11 @@
 import { Chess, type Color, type Move } from 'chess.js'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { CATEGORY_INFO, isBad, type Category } from '../analysis/classify'
+import { CATEGORIES, CATEGORY_INFO, isBad } from '../analysis/classify'
+import { EvalGraph } from '../analysis/EvalGraph'
 import { formatEval } from '../analysis/eval'
 import { analyseMove, type MoveAnalysis } from '../analysis/explain'
+import { estimatePerformance, evalSeries, keyMoments } from '../analysis/gameReview'
+import { loadOpenings, openingAt, type Opening, type OpeningBook } from '../analysis/openings'
 import type { StockfishEngine } from '../engine/stockfish'
 import { gameAccuracy } from '../profile/profile'
 import { Board } from '../ui/Board'
@@ -14,7 +17,6 @@ type Props = {
   initial?: { pgn: string; color: Color; key: number } | null
 }
 
-const ORDER: Category[] = ['best', 'good', 'inaccuracy', 'mistake', 'blunder']
 /** Tiefer als im Live-Coach (13): hier darf es ein paar Sekunden dauern. */
 const DEPTH = 16
 
@@ -26,6 +28,8 @@ export function ReviewView({ engine, initial }: Props) {
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
   const [ply, setPly] = useState(-1)
   const [error, setError] = useState<string | null>(null)
+  const [opening, setOpening] = useState<Opening | null>(null)
+  const [reviewColor, setReviewColor] = useState<Color>(color)
   /** Index in der besseren Fortsetzung (null = normale Partie-Ansicht). */
   const [variation, setVariation] = useState<number | null>(null)
   useEffect(() => setVariation(null), [ply])
@@ -50,6 +54,11 @@ export function ReviewView({ engine, initial }: Props) {
       setMoves(ms)
       setAnalyses({})
       setPly(-1)
+      setReviewColor(side)
+      setOpening(null)
+      const book: OpeningBook | null = await loadOpenings().catch(() => null)
+      if (run.current !== id) return
+      setOpening(openingAt(ms, book))
       if (!engine) return
       const targets = ms.map((m, i) => ({ m, i })).filter((x) => x.m.color === side)
       setProgress({ done: 0, total: targets.length })
@@ -60,6 +69,7 @@ export function ReviewView({ engine, initial }: Props) {
           { ply: i, fenBefore: m.before, fenAfter: m.after, san: m.san, from: m.from, to: m.to, promotion: m.promotion, piece: m.piece, color: m.color },
           before,
           after,
+          { book },
         )
         setAnalyses((p) => ({ ...p, [i]: a }))
         setProgress((p) => (p ? { ...p, done: p.done + 1 } : p))
@@ -90,6 +100,17 @@ export function ReviewView({ engine, initial }: Props) {
 
   const list = useMemo(() => Object.values(analyses).sort((a, b) => a.ply - b.ply), [analyses])
   const mistakes = list.filter((a) => isBad(a.category))
+  const done = !!progress && progress.done >= progress.total
+  const series = useMemo(() => evalSeries(moves.length, analyses), [moves.length, analyses])
+  const moments = useMemo(() => (done ? keyMoments(moves, analyses, reviewColor) : []), [done, moves, analyses, reviewColor])
+  const accuracy = gameAccuracy(list)
+  const ownMoves = list.filter((a) => a.category !== 'book').length
+  const perf = done ? estimatePerformance(accuracy, ownMoves) : null
+  const graphMarks = useMemo(
+    () => list.filter((a) => a.category === 'mistake' || a.category === 'blunder').map((a) => ({ ply: a.ply, category: a.category })),
+    [list],
+  )
+  const moveNo = (p: number) => `${Math.floor(p / 2) + 1}${p % 2 === 0 ? '.' : '…'}`
   const sel = ply >= 0 ? analyses[ply] : undefined
   const selMove = ply >= 0 ? moves[ply] : undefined
   const showBefore = !!sel && isBad(sel.category)
@@ -241,27 +262,81 @@ export function ReviewView({ engine, initial }: Props) {
             {list.length > 0 && (
               <div className="card summary">
                 <h2>Auswertung</h2>
+                {opening && (
+                  <p className="opening-name" title="Eröffnung laut Lichess-Eröffnungsliste">
+                    <span className="eco">{opening.eco}</span>
+                    {opening.name}
+                  </p>
+                )}
                 <div className="summary-acc">
                   <span>Genauigkeit</span>
-                  <strong>{Math.round(gameAccuracy(list))} %</strong>
+                  <strong>{Math.round(accuracy)} %</strong>
                 </div>
+                {perf !== null && (
+                  <div className="perf" title="Grobe Faustregel aus der Genauigkeit dieser einen Partie – keine echte Wertungszahl">
+                    <span>Leistung (geschätzt)</span>
+                    <span>
+                      <strong>≈ {perf}</strong> <small>Elo</small>
+                    </span>
+                  </div>
+                )}
                 <div className="summary-counts">
-                  {ORDER.map((c) => (
+                  {CATEGORIES.map((c) => (
                     <span key={c} title={CATEGORY_INFO[c].label} style={{ color: CATEGORY_INFO[c].color }}>
                       {CATEGORY_INFO[c].symbol} {list.filter((a) => a.category === c).length}
                     </span>
                   ))}
                 </div>
+                <EvalGraph
+                  series={series}
+                  marks={graphMarks}
+                  selected={ply}
+                  onSelect={setPly}
+                  sanOf={(p) => moves[p]?.san ?? ''}
+                />
+                <p className="eg-legend">
+                  <span>▲ Vorteil Weiss</span>
+                  <span>Klick springt zum Zug</span>
+                  <span>▼ Vorteil Schwarz</span>
+                </p>
+                <p className="muted-text small">Buchzüge (📖) zählen nicht zur Genauigkeit.</p>
                 {mistakes.length > 0 && (
                   <div className="jump">
                     {mistakes.map((m) => (
                       <button key={m.ply} onClick={() => setPly(m.ply)} style={{ borderColor: CATEGORY_INFO[m.category].color }}>
-                        {Math.floor(m.ply / 2) + 1}. {m.san}
+                        {moveNo(m.ply)} {m.san}
                         {CATEGORY_INFO[m.category].symbol}
                       </button>
                     ))}
                   </div>
                 )}
+              </div>
+            )}
+
+            {moments.length > 0 && (
+              <div className="card key-moments">
+                <h2>Schlüsselmomente</h2>
+                <ol className="moments">
+                  {moments.map((k) => (
+                    <li key={k.ply}>
+                      <button
+                        onClick={() => setPly(k.ply)}
+                        style={{ borderLeftColor: k.swing < 0 ? 'var(--danger)' : '#2f7d3f' }}
+                        title="Zu diesem Zug springen"
+                      >
+                        {moveNo(k.ply)} {k.san}
+                      </button>
+                      <p>
+                        <span className={`swing ${k.swing < 0 ? 'down' : 'up'}`}>
+                          {k.swing > 0 ? '+' : '−'}
+                          {Math.round(Math.abs(k.swing))} %
+                        </span>{' '}
+                        {k.text}
+                      </p>
+                    </li>
+                  ))}
+                </ol>
+                <p className="muted-text small">Grösste Änderungen deiner Gewinnchance in dieser Partie.</p>
               </div>
             )}
 

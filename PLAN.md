@@ -83,7 +83,7 @@ public/
 - [x] Motiv-Erkennung (regelbasiert):
   - Figur hängt (ungedeckt angegriffen) / Figur eingestellt
   - Gabel übersehen (eigene Chance oder gegnerische Drohung)
-  - Fesselung / Spiess *(noch offen – kommt mit Phase 3/4)*
+  - Fesselung (absolut/relativ), Spiess, Abzugsangriff/-schach, Grundreihe, Doppelangriff der Dame, eingesperrte Figur (`motifs.ts`)
   - Matt in N verpasst / Mattdrohung übersehen
   - Ungünstiger Abtausch (Materialbilanz)
   - Eröffnungsprinzipien (Dame nicht zu früh, Springer nicht an den Rand, rechtzeitig rochieren)

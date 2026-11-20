@@ -1,7 +1,10 @@
 import type { Color } from 'chess.js'
+import { useEffect, useMemo, useState } from 'react'
+import '../analysis/review.css'
 import { CATEGORY_INFO } from '../analysis/classify'
+import { loadOpenings, openingBook, type OpeningBook } from '../analysis/openings'
 import { MOTIF_INFO, PHASE_LABEL } from '../profile/motifInfo'
-import { duePuzzles, mistakesByPhase, weaknesses, type Profile } from '../profile/profile'
+import { duePuzzles, gameOpening, mistakesByPhase, openingStats, weaknesses, type Profile } from '../profile/profile'
 
 const OUTCOME = { win: { label: 'Sieg', cls: 'win' }, draw: { label: 'Remis', cls: 'draw' }, loss: { label: 'Niederlage', cls: 'loss' } }
 
@@ -18,6 +21,12 @@ export function StatsView({ profile, onReset, onReview }: Props) {
   const phases = mistakesByPhase(profile)
   const phaseMax = Math.max(1, ...Object.values(phases))
   const last20 = games.slice(-20)
+  // Buch für ältere Partien ohne gespeicherten Eröffnungsnamen
+  const [book, setBook] = useState<OpeningBook | null>(openingBook())
+  useEffect(() => {
+    if (!book) loadOpenings().then(setBook, () => {})
+  }, [book])
+  const openings = useMemo(() => openingStats(profile, book).slice(0, 8), [profile, book])
 
   if (games.length === 0) {
     return (
@@ -97,12 +106,42 @@ export function StatsView({ profile, onReset, onReview }: Props) {
       </div>
 
       <div className="card">
+        <h2>Eröffnungen</h2>
+        {openings.length === 0 ? (
+          <p className="muted-text">Noch keine Eröffnung erkannt.</p>
+        ) : (
+          <table className="games openings">
+            <thead>
+              <tr>
+                <th>Eröffnung</th>
+                <th>Partien</th>
+                <th>Punkte</th>
+                <th>Ø Genauigkeit</th>
+              </tr>
+            </thead>
+            <tbody>
+              {openings.map((o) => (
+                <tr key={o.family}>
+                  <td>{o.family}</td>
+                  <td title={`${o.wins} S · ${o.draws} R · ${o.losses} N`}>{o.games}</td>
+                  <td>{Math.round(o.score)} %</td>
+                  <td>{Math.round(o.accuracy)} %</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+        <p className="muted-text small">Nach Eröffnungsfamilie (Lichess-Eröffnungsliste) · Punkte: Sieg 1, Remis ½.</p>
+      </div>
+
+      <div className="card">
         <h2>Letzte Partien</h2>
         <table className="games">
           <thead>
             <tr>
               <th>Datum</th>
               <th>Farbe</th>
+              <th>Eröffnung</th>
               <th>Stufe</th>
               <th>Ergebnis</th>
               <th>Genauigkeit</th>
@@ -115,6 +154,9 @@ export function StatsView({ profile, onReset, onReview }: Props) {
               <tr key={g.id}>
                 <td>{new Date(g.date).toLocaleDateString('de-CH')}</td>
                 <td>{g.playerColor === 'w' ? '○ Weiss' : '● Schwarz'}</td>
+                <td className="opening-cell" title={gameOpening(g, book) ?? undefined}>
+                  {gameOpening(g, book) ?? '–'}
+                </td>
                 <td>{g.level}</td>
                 <td className={OUTCOME[g.outcome].cls} title={g.reason}>
                   {OUTCOME[g.outcome].label}

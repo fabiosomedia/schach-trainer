@@ -1,6 +1,7 @@
 import type { Color } from 'chess.js'
-import type { Category } from '../analysis/classify'
+import { emptyCounts, type Category } from '../analysis/classify'
 import type { GamePhase, MoveAnalysis, Motif } from '../analysis/explain'
+import { openingFamily, openingFromPgn, type OpeningBook } from '../analysis/openings'
 import type { GameResult } from '../game/status'
 
 export type MistakeRecord = {
@@ -27,6 +28,9 @@ export type GameRecord = {
   accuracy: number
   counts: Record<Category, number>
   pgn: string
+  /** Tiefste erkannte Eröffnung, z. B. "C60 Spanische Partie" → nur der Name (optional, ältere Partien haben ihn nicht). */
+  opening?: string
+  eco?: string
 }
 
 export type Puzzle = {
@@ -63,7 +67,9 @@ export function loadProfile(storage: Pick<Storage, 'getItem'> = localStorage): P
     if (!raw) return emptyProfile()
     const p = JSON.parse(raw) as Profile
     if (p?.version !== 1) return emptyProfile()
-    return { ...emptyProfile(), ...p }
+    // Ältere Profile: Zähler ohne 'book' ergänzen
+    const games = (p.games ?? []).map((g) => ({ ...g, counts: { ...emptyCounts(), ...g.counts } }))
+    return { ...emptyProfile(), ...p, games }
   } catch {
     return emptyProfile()
   }
@@ -82,9 +88,16 @@ export function moveAccuracy(loss: number): number {
   return Math.max(0, Math.min(100, 103.1668 * Math.exp(-0.04354 * loss) - 3.1669))
 }
 
+/**
+ * Genauigkeit einer Partie: Mittel der Zug-Genauigkeiten. Buchzüge zählen NICHT mit
+ * (Theorie auswendig spielen sagt wenig über die eigene Stärke). Bestand die Partie
+ * nur aus Buchzügen, ist sie 100 %.
+ */
 export function gameAccuracy(analyses: MoveAnalysis[]): number {
   if (analyses.length === 0) return 0
-  return analyses.reduce((s, a) => s + moveAccuracy(a.loss), 0) / analyses.length
+  const own = analyses.filter((a) => a.category !== 'book')
+  if (own.length === 0) return 100
+  return own.reduce((s, a) => s + moveAccuracy(a.loss), 0) / own.length
 }
 
 const DAY = 24 * 60 * 60 * 1000
@@ -100,13 +113,16 @@ export type GameInput = {
   reason: string
   plies: number
   pgn: string
+  /** Eröffnungsname; fehlt er, wird er (falls das Buch geladen ist) aus der PGN bestimmt. */
+  opening?: string
+  eco?: string
   now?: number
 }
 
 /** Fügt eine beendete Partie ins Profil ein: Statistik, Fehler, neue Puzzles. */
 export function recordGame(p: Profile, g: GameInput): Profile {
   const now = g.now ?? Date.now()
-  const counts: Record<Category, number> = { best: 0, good: 0, inaccuracy: 0, mistake: 0, blunder: 0 }
+  const counts = emptyCounts()
   for (const a of g.analyses) counts[a.category]++
 
   const won = (g.result === '1-0' && g.playerColor === 'w') || (g.result === '0-1' && g.playerColor === 'b')
@@ -122,6 +138,11 @@ export function recordGame(p: Profile, g: GameInput): Profile {
     accuracy: Math.round(gameAccuracy(g.analyses) * 10) / 10,
     counts,
     pgn: g.pgn,
+  }
+  const op = g.opening ? { name: g.opening, eco: g.eco } : openingFromPgn(g.pgn)
+  if (op) {
+    game.opening = op.name
+    if (op.eco) game.eco = op.eco
   }
 
   const bad = g.analyses.filter((a) => a.motif && (a.category === 'mistake' || a.category === 'blunder' || a.category === 'inaccuracy'))
@@ -195,7 +216,7 @@ export function duePuzzles(p: Profile, now = Date.now()): Puzzle[] {
  */
 export function weaknesses(p: Profile): { motif: Motif; score: number; count: number }[] {
   const recentFrom = p.games.length > 20 ? p.games[p.games.length - 20].date : 0
-  const weight: Record<Category, number> = { best: 0, good: 0, inaccuracy: 0.5, mistake: 1, blunder: 2 }
+  const weight: Record<Category, number> = { book: 0, best: 0, good: 0, inaccuracy: 0.5, mistake: 1, blunder: 2 }
   const by = new Map<Motif, { score: number; count: number }>()
   for (const m of p.mistakes) {
     const w = weight[m.category] * (m.date >= recentFrom ? 1 : 0.5)
@@ -209,4 +230,38 @@ export function mistakesByPhase(p: Profile): Record<GamePhase, number> {
   const out: Record<GamePhase, number> = { opening: 0, middlegame: 0, endgame: 0 }
   for (const m of p.mistakes) if (m.category !== 'inaccuracy') out[m.phase]++
   return out
+}
+
+export type OpeningStat = { family: string; games: number; score: number; accuracy: number; wins: number; draws: number; losses: number }
+
+/** Eröffnungsname einer gespeicherten Partie (gespeichert oder nachträglich aus der PGN). */
+export function gameOpening(g: GameRecord, book?: OpeningBook | null): string | null {
+  return g.opening ?? openingFromPgn(g.pgn, book)?.name ?? null
+}
+
+/**
+ * Statistik pro Eröffnungsfamilie (Teil vor dem Doppelpunkt): Partien, Punkte in %
+ * (Sieg 1, Remis ½) und Ø-Genauigkeit. Sortiert nach Anzahl Partien.
+ */
+export function openingStats(p: Profile, book?: OpeningBook | null): OpeningStat[] {
+  const by = new Map<string, { games: number; points: number; acc: number; wins: number; draws: number; losses: number }>()
+  for (const g of p.games) {
+    const name = gameOpening(g, book)
+    if (!name) continue
+    const fam = openingFamily(name)
+    const e = by.get(fam) ?? { games: 0, points: 0, acc: 0, wins: 0, draws: 0, losses: 0 }
+    e.games++
+    e.acc += g.accuracy
+    if (g.outcome === 'win') {
+      e.wins++
+      e.points += 1
+    } else if (g.outcome === 'draw') {
+      e.draws++
+      e.points += 0.5
+    } else e.losses++
+    by.set(fam, e)
+  }
+  return [...by.entries()]
+    .map(([family, e]) => ({ family, games: e.games, score: (e.points / e.games) * 100, accuracy: e.acc / e.games, wins: e.wins, draws: e.draws, losses: e.losses }))
+    .sort((a, b) => b.games - a.games || b.score - a.score)
 }
