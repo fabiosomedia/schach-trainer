@@ -83,7 +83,8 @@ button.primary {
 }
 .board-wrap {
   position: relative;
-  width: min(100%, calc(100vh - 140px));
+  /* So breit wie möglich, aber nie höher als das Fenster (Header + Status ≈ 150 px) */
+  width: min(100%, max(260px, calc(100dvh - 150px)));
   margin: 0 auto;
 }
 
@@ -222,9 +223,6 @@ button.primary {
   .layout {
     grid-template-columns: 1fr;
   }
-  .board-wrap {
-    width: 100%;
-  }
 }
 
 /* ---------- Phase 2: Coach, Eval-Leiste ---------- */
@@ -235,12 +233,13 @@ button.primary {
 }
 .board-row .board-wrap {
   margin: 0;
-  flex: 1 1 auto;
+  flex: 0 1 auto;
+  min-width: 0;
 }
 .eval-bar {
   position: relative;
-  width: 22px;
-  flex: 0 0 22px;
+  width: 30px;
+  flex: 0 0 30px;
   background: #2a2d36;
   border-radius: 6px;
   overflow: hidden;

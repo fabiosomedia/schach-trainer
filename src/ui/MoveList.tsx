@@ -12,9 +12,12 @@ type Props = {
 }
 
 export function MoveList({ moves, analyses, selected, onSelect }: Props) {
-  const endRef = useRef<HTMLDivElement>(null)
+  const listRef = useRef<HTMLDivElement>(null)
+  // Nur die Liste selbst nach unten scrollen – nicht die ganze Seite (scrollIntoView
+  // würde bei schmalen Fenstern bei jedem Zug die Seite unter das Brett springen lassen).
   useEffect(() => {
-    if (!onSelect) endRef.current?.scrollIntoView({ block: 'nearest' })
+    const el = listRef.current
+    if (el && !onSelect) el.scrollTop = el.scrollHeight
   }, [moves.length, onSelect])
 
   // Partien können aus einer FEN starten – Zugnummer und erste Farbe daraus ableiten.
@@ -46,7 +49,7 @@ export function MoveList({ moves, analyses, selected, onSelect }: Props) {
 
   const rows = Math.ceil((moves.length + offset) / 2)
   return (
-    <div className="move-list">
+    <div className="move-list" ref={listRef}>
       {rows === 0 && <div className="muted">Noch keine Züge</div>}
       {Array.from({ length: rows }, (_, r) => (
         <div className="move-row" key={r}>
@@ -55,7 +58,6 @@ export function MoveList({ moves, analyses, selected, onSelect }: Props) {
           {cell(r * 2 + 1 - offset)}
         </div>
       ))}
-      <div ref={endRef} />
     </div>
   )
 }
