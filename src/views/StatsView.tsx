@@ -1,10 +1,13 @@
+import type { Color } from 'chess.js'
 import { CATEGORY_INFO } from '../analysis/classify'
 import { MOTIF_INFO, PHASE_LABEL } from '../profile/motifInfo'
 import { duePuzzles, mistakesByPhase, weaknesses, type Profile } from '../profile/profile'
 
 const OUTCOME = { win: { label: 'Sieg', cls: 'win' }, draw: { label: 'Remis', cls: 'draw' }, loss: { label: 'Niederlage', cls: 'loss' } }
 
-export function StatsView({ profile, onReset }: { profile: Profile; onReset: () => void }) {
+type Props = { profile: Profile; onReset: () => void; onReview: (pgn: string, color: Color) => void }
+
+export function StatsView({ profile, onReset, onReview }: Props) {
   const games = profile.games
   const wins = games.filter((g) => g.outcome === 'win').length
   const draws = games.filter((g) => g.outcome === 'draw').length
@@ -104,6 +107,7 @@ export function StatsView({ profile, onReset }: { profile: Profile; onReset: () 
               <th>Ergebnis</th>
               <th>Genauigkeit</th>
               <th>Fehler</th>
+              <th />
             </tr>
           </thead>
           <tbody>
@@ -119,6 +123,11 @@ export function StatsView({ profile, onReset }: { profile: Profile; onReset: () 
                 <td>
                   <span style={{ color: CATEGORY_INFO.mistake.color }}>? {g.counts.mistake}</span>{' '}
                   <span style={{ color: CATEGORY_INFO.blunder.color }}>?? {g.counts.blunder}</span>
+                </td>
+                <td>
+                  <button className="link" onClick={() => onReview(g.pgn, g.playerColor)} disabled={!g.pgn}>
+                    Analysieren
+                  </button>
                 </td>
               </tr>
             ))}

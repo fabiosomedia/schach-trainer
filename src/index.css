@@ -540,3 +540,120 @@ button.danger {
     grid-template-columns: 1fr;
   }
 }
+
+/* ---------- Phase 4 ---------- */
+.tabs button.icon {
+  padding: 8px 10px;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 14px;
+}
+select,
+textarea {
+  font: inherit;
+  color: var(--text);
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px;
+  width: 100%;
+}
+textarea {
+  resize: vertical;
+  font-family: ui-monospace, 'Cascadia Code', Consolas, monospace;
+  font-size: 13px;
+}
+.check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--muted);
+}
+.check input {
+  accent-color: var(--accent);
+}
+.goal {
+  border-color: var(--accent);
+}
+.seg.two {
+  grid-template-columns: 1fr 1fr;
+}
+.error {
+  color: var(--danger);
+  margin: 0;
+  font-size: 14px;
+}
+.nav {
+  grid-template-columns: repeat(4, 1fr);
+  margin-top: 10px;
+}
+.move.clickable {
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 0 4px;
+}
+.move.clickable:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+.move.selected {
+  background: rgba(240, 166, 58, 0.25);
+}
+.jump {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.jump button {
+  font-size: 13px;
+  padding: 4px 8px;
+}
+.dot.orange {
+  background: rgb(255, 140, 60);
+}
+button.link {
+  background: none;
+  border: none;
+  color: var(--accent);
+  padding: 0;
+  text-decoration: underline;
+}
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--card);
+  border: 1px solid var(--accent);
+  padding: 12px 18px;
+  border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  animation: toast-in 0.25s ease;
+  z-index: 50;
+}
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 10px);
+  }
+}
+@media (max-width: 860px) {
+  .tabs {
+    width: 100%;
+  }
+  .tabs button {
+    flex: 1 1 auto;
+    padding: 8px 6px;
+    font-size: 14px;
+  }
+  .tabs button.icon {
+    flex: 0 0 auto;
+  }
+  .games th:nth-child(3),
+  .games td:nth-child(3) {
+    display: none;
+  }
+}

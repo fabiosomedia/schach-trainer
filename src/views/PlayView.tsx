@@ -4,6 +4,7 @@ import { CATEGORY_INFO, isBad, type Category } from '../analysis/classify'
 import { useCoach } from '../analysis/useCoach'
 import type { StockfishEngine } from '../engine/stockfish'
 import { levelConfig, MAX_LEVEL, MIN_LEVEL } from '../engine/strength'
+import { findPosition, START_POSITIONS } from '../game/positions'
 import { checkedKingSquare } from '../game/status'
 import { useGame } from '../game/useGame'
 import { gameAccuracy, type GameInput } from '../profile/profile'
@@ -11,6 +12,7 @@ import { Board } from '../ui/Board'
 import { CoachPanel } from '../ui/CoachPanel'
 import { EvalBar } from '../ui/EvalBar'
 import { MoveList } from '../ui/MoveList'
+import { playSound } from '../ui/sound'
 
 type ColorChoice = 'w' | 'b' | 'random'
 
@@ -18,13 +20,19 @@ type Props = {
   engines: { play: StockfishEngine; coach: StockfishEngine } | null
   level: number
   onLevelChange: (level: number) => void
+  autoLevel: boolean
+  onAutoLevelChange: (on: boolean) => void
+  sound: boolean
   onGameFinished: (g: GameInput) => void
 }
 
 const SUMMARY_ORDER: Category[] = ['best', 'good', 'inaccuracy', 'mistake', 'blunder']
 
-export function PlayView({ engines, level, onLevelChange, onGameFinished }: Props) {
+export function PlayView(props: Props) {
+  const { engines, level, onLevelChange, autoLevel, onAutoLevelChange, sound, onGameFinished } = props
   const [colorChoice, setColorChoice] = useState<ColorChoice>('w')
+  const [startId, setStartId] = useState('start')
+  const [goal, setGoal] = useState<string | null>(null)
   const [hint, setHint] = useState({ fen: '', level: 0 })
 
   const game = useGame(engines?.play ?? null, level)
@@ -71,6 +79,19 @@ export function PlayView({ engines, level, onLevelChange, onGameFinished }: Prop
     return () => clearTimeout(t)
   }, [status, gameNo, moves, playerColor, analysisList, level, chess, onGameFinished])
 
+  // Sounds bei neuen Zügen und Partieende
+  const heard = useRef(0)
+  useEffect(() => {
+    const n = moves.length
+    if (sound && n > heard.current && lastMove) {
+      if (status.over && status.result) {
+        const won = (status.result === '1-0' && playerColor === 'w') || (status.result === '0-1' && playerColor === 'b')
+        playSound(status.result === '1/2-1/2' ? 'move' : won ? 'win' : 'lose')
+      } else playSound(lastMove.san.includes('+') ? 'check' : lastMove.captured ? 'capture' : 'move')
+    }
+    heard.current = n
+  }, [moves.length, lastMove, sound, status, playerColor])
+
   // Hinweis gilt nur für die aktuelle Stellung
   const hintLevel = hint.fen === fen ? hint.level : 0
   const bestNow = coach.currentEval?.best ?? null
@@ -86,9 +107,20 @@ export function PlayView({ engines, level, onLevelChange, onGameFinished }: Prop
     return []
   }, [hintLevel, bestNow, lastAnalysis, isPlayerTurn, lastPlayerPly, moves.length])
 
+  const startPos = findPosition(startId)
   const startNewGame = () => {
-    const color: Color = colorChoice === 'random' ? (Math.random() < 0.5 ? 'w' : 'b') : colorChoice
-    game.newGame(color)
+    const chosen: Color = colorChoice === 'random' ? (Math.random() < 0.5 ? 'w' : 'b') : colorChoice
+    game.newGame(startPos.color ?? chosen, startPos.fen)
+    setGoal(startPos.goal ? `${startPos.name}: ${startPos.goal}` : null)
+  }
+
+  const downloadPgn = () => {
+    const blob = new Blob([chess.pgn()], { type: 'application/x-chess-pgn' })
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    a.download = `partie-${new Date().toISOString().slice(0, 10)}.pgn`
+    a.click()
+    URL.revokeObjectURL(a.href)
   }
 
   let statusText: string
@@ -147,6 +179,13 @@ export function PlayView({ engines, level, onLevelChange, onGameFinished }: Prop
           </div>
         )}
 
+        {goal && (
+          <div className="card goal">
+            <h2>Aufgabe</h2>
+            <p className="coach-text">{goal}</p>
+          </div>
+        )}
+
         <CoachPanel
           analysis={lastAnalysis}
           waiting={lastPlayerPly >= 0 && !lastAnalysis}
@@ -168,6 +207,9 @@ export function PlayView({ engines, level, onLevelChange, onGameFinished }: Prop
               🏳 Aufgeben
             </button>
           </div>
+          <button onClick={downloadPgn} disabled={moves.length === 0}>
+            ⤓ PGN herunterladen
+          </button>
         </div>
 
         <div className="card">
@@ -186,6 +228,22 @@ export function PlayView({ engines, level, onLevelChange, onGameFinished }: Prop
             ))}
           </div>
 
+          <label className="field">
+            <span>Startstellung</span>
+            <select value={startId} onChange={(e) => setStartId(e.target.value)}>
+              {(['Normal', 'Eröffnung', 'Endspiel'] as const).map((g) => (
+                <optgroup key={g} label={g}>
+                  {START_POSITIONS.filter((p) => p.group === g).map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+          </label>
+          {startPos.color && <p className="muted-text small">Du spielst hier immer {startPos.color === 'w' ? 'Weiss' : 'Schwarz'}.</p>}
+
           <label className="level">
             <div className="level-head">
               <span>Stärke</span>
@@ -200,6 +258,10 @@ export function PlayView({ engines, level, onLevelChange, onGameFinished }: Prop
               value={level}
               onChange={(e) => onLevelChange(Number(e.target.value))}
             />
+          </label>
+          <label className="check">
+            <input type="checkbox" checked={autoLevel} onChange={(e) => onAutoLevelChange(e.target.checked)} />
+            Stärke nach jeder Partie automatisch anpassen
           </label>
 
           <button className="primary" onClick={startNewGame}>

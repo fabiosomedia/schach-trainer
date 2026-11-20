@@ -107,9 +107,10 @@ export function useGame(engine: StockfishEngine | null, level: number) {
   }, [chess, playerColor, sync])
 
   const newGame = useCallback(
-    (color: Color) => {
+    (color: Color, startFen?: string) => {
       gameId.current++
-      chess.reset()
+      if (startFen) chess.load(startFen)
+      else chess.reset()
       setResigned(null)
       setGameNo((n) => n + 1)
       setPlayerColor(color)

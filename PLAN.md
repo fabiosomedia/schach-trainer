@@ -86,7 +86,7 @@ public/
   - Fesselung / Spiess *(noch offen – kommt mit Phase 3/4)*
   - Matt in N verpasst / Mattdrohung übersehen
   - Ungünstiger Abtausch (Materialbilanz)
-  - Eröffnungsprinzipien (Figuren entwickeln, Zentrum, früh rochieren, Dame nicht zu früh)
+  - Eröffnungsprinzipien (Dame nicht zu früh, Springer nicht an den Rand, rechtzeitig rochieren)
 - [x] Coach-Panel: Erklärung + besserer Zug als Pfeil auf dem Brett
 - [x] „Nochmal versuchen“: Fehlerzug zurücknehmen und es selbst besser machen
 - [x] Hinweis-Knopf (stufenweise: Figur → Feld → Zug)
@@ -101,10 +101,10 @@ public/
 - Umgesetzt: Profil in `localStorage`, Tabs Spielen/Training/Statistik, Puzzle-Lösung auch mit gleichwertigem Alternativzug (Engine-Check ≤ 3 Prozentpunkte).
 
 ### Phase 4 – Adaptives Training & Feinschliff
-- [ ] Spielstärke passt sich automatisch an (Elo-Schätzung aus Resultaten + Genauigkeit)
-- [ ] Trainingsmodi: Eröffnungstraining, Endspiel-Übungen (z. B. König+Dame gegen König), Taktik
-- [ ] Partien als PGN export/import
-- [ ] Design: dunkles Theme, Animationen, Sounds, Handy-tauglich
+- [x] Spielstärke passt sich automatisch an (nach Ergebnis + Genauigkeit, abschaltbar)
+- [x] Trainingsmodi: 6 Eröffnungen, 3 Endspiel-Übungen (K+D, K+T, Bauernendspiel) als Startstellungen mit Aufgabe
+- [x] PGN-Export (Download) und Import mit kompletter Partie-Analyse (Tab „Analyse“, auch aus Statistik)
+- [x] Design: dunkles Theme, Animationen, WebAudio-Sounds, Handy-tauglich (390 px getestet)
 - [ ] Deploy auf GitLab/GitHub Pages
 - **Fertig wenn:** Der Trainer ist im Alltag nutzbar und online erreichbar.
 
