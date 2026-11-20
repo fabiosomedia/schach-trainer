@@ -47,12 +47,20 @@ describe('analyseMove – Motive', () => {
     expect(a.arrows.length).toBe(2)
   })
 
-  it('erkennt ein verpasstes Matt', () => {
+  it('erkennt ein verpasstes (Grundreihen-)Matt', () => {
     const fen = '6k1/5ppp/8/8/8/8/8/R5K1 w - - 0 1'
     const a = analyseMove(mv(fen, 'g1f1'), res({ type: 'mate', value: 1 }, ['a1a8']), res({ type: 'cp', value: -500 }, ['g8f8']))
+    expect(a.motif).toBe('missed_back_rank')
+    expect(a.text).toContain('Ra8#')
+  })
+
+  it('erkennt ein verpasstes Matt (kein Grundreihenmatt)', () => {
+    // Dame setzt auf g7 matt (gedeckt vom Läufer b2) – kein Grundreihenmatt
+    const fen = '6k1/5p1p/6p1/8/3Q4/8/1B6/6K1 w - - 0 1'
+    const a = analyseMove(mv(fen, 'g1f1'), res({ type: 'mate', value: 1 }, ['d4g7']), res({ type: 'cp', value: 500 }, ['g8f8']))
     expect(a.motif).toBe('missed_mate')
     expect(a.text).toContain('Matt in 1')
-    expect(a.text).toContain('Ra8#')
+    expect(a.text).toContain('Qg7#')
   })
 
   it('erkennt ein zugelassenes Matt', () => {

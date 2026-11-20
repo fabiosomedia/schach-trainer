@@ -1,10 +1,14 @@
+import openingsRaw from '../data/openings.json?raw'
 import { describe, expect, it } from 'vitest'
+import { OpeningBook, type OpeningData } from '../analysis/openings'
 import type { MoveAnalysis } from '../analysis/explain'
 import {
   answerPuzzle,
   BOX_INTERVALS,
   duePuzzles,
   emptyProfile,
+  gameAccuracy,
+  openingStats,
   loadProfile,
   moveAccuracy,
   recordGame,
@@ -107,5 +111,37 @@ describe('Speichern/Laden', () => {
     expect(loadProfile(storage)).toEqual(p)
     store.set('schach-trainer:profile', '{kaputt')
     expect(loadProfile(storage)).toEqual(emptyProfile())
+  })
+})
+
+describe('Buchzüge und Eröffnungen', () => {
+  const book = new OpeningBook(JSON.parse(openingsRaw) as OpeningData)
+
+  it('Buchzüge zählen nicht zur Genauigkeit, werden aber gezählt', () => {
+    const bk = analysis({ category: 'book', loss: 0 })
+    expect(gameAccuracy([bk, bk, inacc])).toBeCloseTo(gameAccuracy([inacc]))
+    expect(gameAccuracy([bk])).toBe(100)
+    const p = recordGame(emptyProfile(), game([bk, blunder]))
+    expect(p.games[0].counts.book).toBe(1)
+  })
+
+  it('ergänzt alten Profilen den Buchzug-Zähler', () => {
+    const old = { version: 1, games: [{ id: '1', counts: { best: 1, good: 0, inaccuracy: 0, mistake: 0, blunder: 0 } }], mistakes: [], puzzles: [] }
+    const p = loadProfile({ getItem: () => JSON.stringify(old) })
+    expect(p.games[0].counts.book).toBe(0)
+    expect(p.games[0].opening).toBeUndefined()
+  })
+
+  it('speichert die Eröffnung und wertet pro Familie aus', () => {
+    const ruy = '1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 *'
+    let p = recordGame(emptyProfile(), { ...game([inacc]), pgn: ruy, opening: 'Spanische Partie: Morphy Defense', eco: 'C70' })
+    expect(p.games[0]).toMatchObject({ opening: 'Spanische Partie: Morphy Defense', eco: 'C70' })
+    p = recordGame(p, { ...game([analysis({})], 2000), pgn: ruy, result: '1-0' })
+    // ohne geladenes Buch und ohne Angabe: kein Name gespeichert, Statistik leitet ihn aus der PGN ab
+    expect(p.games[1].opening).toBeUndefined()
+    p = recordGame(p, { ...game([analysis({})], 3000), pgn: '1. d4 d5 2. c4 *', result: '1/2-1/2' })
+    const st = openingStats(p, book)
+    expect(st[0]).toMatchObject({ family: 'Spanische Partie', games: 2, wins: 1, losses: 1, score: 50 })
+    expect(st[1]).toMatchObject({ family: 'Damengambit', games: 1, draws: 1, score: 50 })
   })
 })

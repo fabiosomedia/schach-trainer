@@ -3,6 +3,8 @@ import type { SearchResult } from '../engine/stockfish'
 import type { Score } from '../engine/uci'
 import { classify, isBad, type Category } from './classify'
 import { forColor, toWhite, winPercent } from './eval'
+import { backRankMate, detectTactic, type Tactic } from './motifs'
+import type { OpeningBook } from './openings'
 import {
   isHanging,
   materialBalance,
@@ -11,8 +13,8 @@ import {
   thePiece,
   thePieceAcc,
   VALUE,
-  valuableTargets,
   yourPiece,
+  yourPieceAcc,
 } from './pieces'
 
 export type Motif =
@@ -25,6 +27,18 @@ export type Motif =
   | 'missed_capture'
   | 'missed_fork'
   | 'missed_tactic'
+  | 'allowed_pin'
+  | 'missed_pin'
+  | 'allowed_skewer'
+  | 'missed_skewer'
+  | 'allowed_discovered'
+  | 'missed_discovered'
+  | 'allowed_back_rank'
+  | 'missed_back_rank'
+  | 'allowed_double_attack'
+  | 'missed_double_attack'
+  | 'trapped_piece'
+  | 'missed_trapped_piece'
   | 'positional'
   | 'early_queen'
   | 'knight_rim'
@@ -101,7 +115,12 @@ export function positionScore(fen: string, res: SearchResult): Score {
   return toWhite(top.score, c.turn())
 }
 
-export function analyseMove(m: MoveInput, before: SearchResult, after: SearchResult): MoveAnalysis {
+export type AnalyseOptions = {
+  /** Eröffnungsbuch: Züge, die im Buch bleiben, werden zu „Buchzug“ (ausser Fehler/Patzer). */
+  book?: OpeningBook | null
+}
+
+export function analyseMove(m: MoveInput, before: SearchResult, after: SearchResult, opts: AnalyseOptions = {}): MoveAnalysis {
   const me = m.color
   const opp = other(me)
   const uci = m.from + m.to + (m.promotion ?? '')
@@ -117,6 +136,9 @@ export function analyseMove(m: MoveInput, before: SearchResult, after: SearchRes
   let category = classify(loss, playedIsBest)
   // Matt gesetzt ist immer bester Zug
   if (new Chess(m.fenAfter).isCheckmate()) category = 'best'
+  // Buchzug: bleibt in der Theorie. Fehler und Patzer werden trotzdem als solche gezeigt
+  // (die Lichess-Liste enthält auch zweifelhafte Gambits) – lieber ehrlich als „Buch“.
+  if (opts.book && category !== 'mistake' && category !== 'blunder' && opts.book.has(m.fenAfter)) category = 'book'
 
   const best = bestLine ? playLine(m.fenBefore, bestLine.pv, 6) : { san: [], chess: new Chess(m.fenBefore) }
   const bestSan = best.san[0] ?? null
@@ -126,7 +148,10 @@ export function analyseMove(m: MoveInput, before: SearchResult, after: SearchRes
   let motif: Motif | null = null
   let text = ''
 
-  if (!isBad(category)) {
+  if (category === 'book') {
+    const o = opts.book!.at(m.fenAfter)
+    text = `Buchzug – bekannte Eröffnungstheorie${o ? ` (${o.eco} ${o.name})` : ''}.`
+  } else if (!isBad(category)) {
     text =
       category === 'best'
         ? pick(['Stark! Genau das hätte auch Stockfish gespielt.', 'Bester Zug – sauber gespielt!', 'Perfekt.'], m.ply)
@@ -158,7 +183,7 @@ export function analyseMove(m: MoveInput, before: SearchResult, after: SearchRes
     bestLineSan: best.san,
     motif,
     text,
-    tips: openingTips(m, category),
+    tips: category === 'book' ? [] : openingTips(m, category),
     arrows,
   }
 }
@@ -182,6 +207,12 @@ function findMotif(
   // 1. Matt verpasst
   if (myBefore.type === 'mate' && myBefore.value > 0 && !(myAfter.type === 'mate' && myAfter.value > 0)) {
     const n = Math.round(myBefore.value)
+    const br = backRankMate(m.fenBefore, bestPv, n * 2 - 1)
+    if (br)
+      return {
+        motif: 'missed_back_rank',
+        text: `Grundreihenmatt verpasst! Der König auf ${br.kingSq} steht hinter den eigenen Bauern eingesperrt: ${line(br.san)}.`,
+      }
     return {
       motif: 'missed_mate',
       text: `Du hattest ein Matt in ${n}! ${line(best.san.slice(0, n * 2 - 1))} – schau immer zuerst nach Schachgeboten.`,
@@ -191,6 +222,12 @@ function findMotif(
   // 2. Matt zugelassen
   if (myAfter.type === 'mate' && myAfter.value < 0) {
     const n = Math.max(1, Math.round(-myAfter.value))
+    const br = backRankMate(m.fenAfter, replyPv, n * 2 - 1)
+    if (br)
+      return {
+        motif: 'allowed_back_rank',
+        text: `Grundreihenschwäche! Dein König auf ${br.kingSq} ist hinter den eigenen Bauern eingesperrt – ${line(br.san)} setzt matt.${better} Ein „Luftloch“ (ein Bauernzug vor dem König) hätte geholfen.`,
+      }
     return {
       motif: 'allowed_mate',
       text: `Achtung: Jetzt kann ${sideName(opp)} in ${n} ${plural(n, 'Zug', 'Zügen')} mattsetzen (${line(reply.san.slice(0, n * 2 - 1))}).${better}`,
@@ -202,27 +239,17 @@ function findMotif(
   const matAfterReply = sign(me) * materialBalance(reply.chess)
   const matAfterBest = sign(me) * materialBalance(best.chess)
 
-  // 3. Gegner hat eine Gabel
-  const threat = replyPv[0]
-  if (threat) {
-    const afterThreat = new Chess(m.fenAfter)
-    try {
-      const t = afterThreat.move({ from: threat.slice(0, 2), to: threat.slice(2, 4), promotion: threat[4] })
-      const targets = valuableTargets(afterThreat, t.to)
-      if (targets.length >= 2 && matAfterReply <= matNow - 2) {
-        const names = targets.map((s) => `${pieceLabel(afterThreat, s)} auf ${s}`)
-        return {
-          motif: 'allowed_fork',
-          text: `Gabel! Nach ${t.san} greift ${thePiece(t.piece)} ${names.join(' und ')} gleichzeitig an.${better}`,
-        }
-      }
-    } catch {
-      /* ignorieren */
-    }
-  }
-
-  // 4. Material eingestellt
+  // 3. Gegnerische Taktik (nur wenn die Engine-Variante wirklich Material gewinnt)
   if (matAfterReply <= matNow - 2) {
+    const threat = replyPv[0]
+    const t = threat ? detectTactic(m.fenAfter, replyPv) : null
+    // Schlägt die Antwort einfach eine hängende Figur, ist das die klarere Erklärung
+    const tSq = threat?.slice(2, 4) as Square | undefined
+    const victim = tSq ? afterMove.get(tSq) : undefined
+    const simpleCapture = !!victim && victim.color === me && isHanging(afterMove, tSq!)
+    if (t && (strong(t) || !simpleCapture)) return { motif: ALLOWED[t.kind], text: allowedText(t) + better }
+
+    // 4. Material eingestellt
     const cap = firstCapture(m.fenAfter, replyPv, opp)
     if (cap) {
       if (cap.square === m.to) {
@@ -234,7 +261,7 @@ function findMotif(
       if (isHanging(afterMove, cap.square as Square)) {
         return {
           motif: 'hung_piece',
-          text: `Nach deinem Zug ist ${yourPiece(cap.piece)} auf ${cap.square} ungeschützt – ${cap.san} schlägt ihn.${better}`,
+          text: `Nach deinem Zug ist ${yourPiece(cap.piece)} auf ${cap.square} ungeschützt – ${cap.san} schlägt ${cap.piece === 'q' ? 'sie' : 'ihn'}.${better}`,
         }
       }
     }
@@ -247,27 +274,16 @@ function findMotif(
   // 5. Gewinn verpasst
   if (bestPv[0] && matAfterBest >= matNow + 2 && matAfterReply < matAfterBest) {
     const before = new Chess(m.fenBefore)
-    const target = before.get(bestPv[0].slice(2, 4) as Square)
-    if (target && target.color === opp && isHanging(before, bestPv[0].slice(2, 4) as Square)) {
+    const bSq = bestPv[0].slice(2, 4) as Square
+    const target = before.get(bSq)
+    const t = detectTactic(m.fenBefore, bestPv)
+    if (target && target.color === opp && isHanging(before, bSq) && !(t && strong(t))) {
       return {
         motif: 'missed_capture',
-        text: `${cap1(thePiece(target.type))} auf ${bestPv[0].slice(2, 4)} war ungedeckt – mit ${bestSan} hättest du ${target.type === 'q' ? 'sie' : 'ihn'} gewinnen können.`,
+        text: `${cap1(thePiece(target.type))} auf ${bSq} war ungedeckt – mit ${bestSan} hättest du ${target.type === 'q' ? 'sie' : 'ihn'} gewinnen können.`,
       }
     }
-    const afterBest = new Chess(m.fenBefore)
-    try {
-      const bm = afterBest.move({ from: bestPv[0].slice(0, 2), to: bestPv[0].slice(2, 4), promotion: bestPv[0][4] })
-      const targets = valuableTargets(afterBest, bm.to)
-      if (targets.length >= 2) {
-        const names = targets.map((s) => `${pieceLabel(afterBest, s)} auf ${s}`)
-        return {
-          motif: 'missed_fork',
-          text: `Mit ${bestSan} hättest du eine Gabel gehabt: ${thePiece(bm.piece)} greift ${names.join(' und ')} an.`,
-        }
-      }
-    } catch {
-      /* ignorieren */
-    }
+    if (t) return { motif: MISSED[t.kind], text: missedText(t) }
     return {
       motif: 'missed_tactic',
       text: `Hier gab es eine Taktik: ${line(best.san.slice(0, 4))} gewinnt Material.`,
@@ -278,6 +294,78 @@ function findMotif(
   return {
     motif: 'positional',
     text: `Dieser Zug verschlechtert deine Stellung.${better}${best.san.length > 1 ? ` Idee: ${line(best.san.slice(0, 3))}` : ''}`,
+  }
+}
+
+const ALLOWED: Record<Tactic['kind'], Motif> = {
+  fork: 'allowed_fork',
+  double_attack: 'allowed_double_attack',
+  pin: 'allowed_pin',
+  skewer: 'allowed_skewer',
+  discovered: 'allowed_discovered',
+  trapped: 'trapped_piece',
+}
+const MISSED: Record<Tactic['kind'], Motif> = {
+  fork: 'missed_fork',
+  double_attack: 'missed_double_attack',
+  pin: 'missed_pin',
+  skewer: 'missed_skewer',
+  discovered: 'missed_discovered',
+  trapped: 'missed_trapped_piece',
+}
+/** Taktiken, die auch dann die bessere Erklärung sind, wenn der erste Zug schon etwas schlägt. */
+const strong = (t: Tactic) => t.kind === 'fork' || t.kind === 'double_attack' || (t.kind === 'discovered' && t.check)
+
+/** "er" / "sie" für eine Figur. */
+const pron = (p: PieceSymbol) => (p === 'q' ? 'sie' : 'er')
+const listOf = (fmt: (p: PieceSymbol) => string, ts: { type: PieceSymbol; sq: Square }[]) =>
+  ts.map((x) => `${fmt(x.type)} auf ${x.sq}`).join(' und ')
+
+/** Erklärung, wenn der Gegner die Taktik gegen dich hat. */
+export function allowedText(t: Tactic): string {
+  switch (t.kind) {
+    case 'fork':
+      return `Gabel! Nach ${t.san} greift ${thePiece(t.piece)} ${listOf(yourPieceAcc, t.targets)} gleichzeitig an.`
+    case 'double_attack':
+      return `Doppelangriff der Dame! Nach ${t.san} greift sie ${listOf(yourPieceAcc, t.targets)} gleichzeitig an.`
+    case 'pin': {
+      const to = yourPieceAcc(t.behind)
+      return t.exploit
+        ? `${t.san} greift ${yourPieceAcc(t.pinned)} auf ${t.pinnedSq} an – ${pron(t.pinned)} ist an ${to} gefesselt und kann nicht ausweichen.`
+        : `Fesselung! Nach ${t.san} ist ${yourPiece(t.pinned)} auf ${t.pinnedSq} an ${to} gefesselt${t.behind === 'k' ? ' und darf nicht mehr ziehen' : ` – zieht ${pron(t.pinned)} weg, fällt ${yourPiece(t.behind)}`}.`
+    }
+    case 'skewer':
+      return `Spiess! ${t.san} greift ${yourPieceAcc(t.front)} an – weicht ${pron(t.front)} aus, fällt ${yourPiece(t.back)} auf ${t.backSq} dahinter.`
+    case 'discovered':
+      return t.check
+        ? `${t.double ? 'Doppelschach' : 'Abzugsschach'}! ${t.san} öffnet die Linie für ${thePieceAcc(t.line)} auf ${t.lineSq}, der jetzt Schach gibt – ${thePiece(t.mover)} zieht dabei mit Tempo.`
+        : `Abzugsangriff! ${t.san} öffnet die Linie: ${thePiece(t.line)} auf ${t.lineSq} greift jetzt ${yourPieceAcc(t.target)} auf ${t.targetSq} an.`
+    case 'trapped':
+      return `${cap1(yourPiece(t.piece))} auf ${t.sq} ist eingesperrt: Nach ${t.san} wird ${pron(t.piece)} angegriffen und hat kein sicheres Feld mehr.`
+  }
+}
+
+/** Erklärung, wenn du die Taktik verpasst hast. */
+export function missedText(t: Tactic): string {
+  switch (t.kind) {
+    case 'fork':
+      return `Mit ${t.san} hättest du eine Gabel gehabt: ${thePiece(t.piece)} greift ${listOf(thePieceAcc, t.targets)} an.`
+    case 'double_attack':
+      return `Mit ${t.san} hätte deine Dame ${listOf(thePieceAcc, t.targets)} gleichzeitig angegriffen (Doppelangriff).`
+    case 'pin': {
+      const to = thePieceAcc(t.behind)
+      return t.exploit
+        ? `${t.san} hätte ${thePieceAcc(t.pinned)} auf ${t.pinnedSq} angegriffen – ${pron(t.pinned)} ist an ${to} gefesselt und kann nicht ausweichen.`
+        : `Fesselung verpasst: Mit ${t.san} hättest du ${thePieceAcc(t.pinned)} auf ${t.pinnedSq} an ${to} gefesselt – das gewinnt Material.`
+    }
+    case 'skewer':
+      return `Spiess verpasst: ${t.san} greift ${thePieceAcc(t.front)} an, und dahinter steht ${thePiece(t.back)} auf ${t.backSq}.`
+    case 'discovered':
+      return t.check
+        ? `${t.double ? 'Doppelschach' : 'Abzugsschach'} verpasst: ${t.san} öffnet die Linie für ${thePieceAcc(t.line)} auf ${t.lineSq} – mit Schach, und ${thePiece(t.mover)} zieht mit Tempo.`
+        : `Abzugsangriff verpasst: Nach ${t.san} hätte ${thePiece(t.line)} auf ${t.lineSq} ${thePieceAcc(t.target)} auf ${t.targetSq} angegriffen.`
+    case 'trapped':
+      return `${t.san} hätte ${thePieceAcc(t.piece)} auf ${t.sq} eingesperrt – ${pron(t.piece)} hat kein sicheres Feld mehr.`
   }
 }
 
@@ -326,11 +414,6 @@ function firstCapture(fen: string, pv: string[], by: Color) {
     if (mv.color === by && mv.captured) return { square: mv.to, piece: mv.captured, san: mv.san }
   }
   return null
-}
-
-function pieceLabel(c: Chess, sq: Square) {
-  const p = c.get(sq)
-  return p ? thePieceAcc(p.type) : sq
 }
 
 const sign = (c: Color) => (c === 'w' ? 1 : -1)
