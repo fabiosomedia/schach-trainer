@@ -15,6 +15,17 @@ type Props = {
   onMove: (from: Square, to: Square, promotion?: string) => boolean
   arrows?: { from: string; to: string; color: string }[]
   hintSquares?: string[]
+  /** Koordinaten am Brettrand anzeigen (Standard: an). */
+  showCoordinates?: boolean
+  /**
+   * Vorgemerkter Zug (Premove): Ist `premoveColor` gesetzt und `canMove` false, darf der
+   * Spieler Figuren dieser Farbe ziehen/anklicken – das ruft `onPremove` statt `onMove` auf.
+   */
+  premoveColor?: Color
+  premove?: { from: string; to: string } | null
+  onPremove?: (from: Square, to: Square) => void
+  /** Rechtsklick aufs Brett (z. B. Vormerkung löschen). */
+  onCancelPremove?: () => void
 }
 
 const PROMO_PIECES = [
@@ -33,6 +44,7 @@ export function Board(props: Props) {
   const [selected, setSelected] = useState<Square | null>(null)
   const [promo, setPromo] = useState<{ from: Square; to: Square } | null>(null)
 
+  const premoveMode = !canMove && !!props.premoveColor && !!props.onPremove
   const targets = useMemo(() => (selected ? legalTargets(selected) : []), [selected, legalTargets])
 
   const attempt = (from: Square, to: Square): boolean => {
@@ -47,14 +59,27 @@ export function Board(props: Props) {
     return ok
   }
 
-  const onPieceDrop = ({ sourceSquare, targetSquare }: PieceDropHandlerArgs): boolean => {
+  const onPieceDrop = ({ sourceSquare, targetSquare, piece }: PieceDropHandlerArgs): boolean => {
+    if (premoveMode && targetSquare && targetSquare !== sourceSquare && colorOfPiece(piece.pieceType) === props.premoveColor) {
+      props.onPremove!(sourceSquare as Square, targetSquare as Square)
+      setSelected(null)
+      return false
+    }
     if (!targetSquare || !canMove) return false
     return attempt(sourceSquare as Square, targetSquare as Square)
   }
 
   const onSquareClick = ({ square, piece }: SquareHandlerArgs) => {
-    if (!canMove) return
     const sq = square as Square
+    if (premoveMode) {
+      const own = !!piece && colorOfPiece(piece.pieceType) === props.premoveColor
+      if (selected && sq !== selected && !own) {
+        props.onPremove!(selected, sq)
+        setSelected(null)
+      } else setSelected(own && sq !== selected ? sq : null)
+      return
+    }
+    if (!canMove) return
     if (selected && targets.includes(sq)) {
       attempt(selected, sq)
       return
@@ -79,6 +104,10 @@ export function Board(props: Props) {
   for (const h of hintSquares) {
     squareStyles[h] = { ...squareStyles[h], boxShadow: 'inset 0 0 0 4px rgba(80, 200, 120, 0.9)' }
   }
+  if (props.premove) {
+    for (const sq of [props.premove.from, props.premove.to])
+      squareStyles[sq] = { ...squareStyles[sq], background: 'var(--premove, rgba(142, 31, 26, 0.5))' }
+  }
   if (selected) squareStyles[selected] = { ...squareStyles[selected], boxShadow: 'inset 0 0 0 4px var(--accent)' }
   for (const t of targets) {
     squareStyles[t] = {
@@ -98,7 +127,15 @@ export function Board(props: Props) {
           boardOrientation: orientation === 'w' ? 'white' : 'black',
           onPieceDrop,
           onSquareClick,
-          canDragPiece: ({ piece }) => canMove && colorOfPiece(piece.pieceType) === turn,
+          canDragPiece: ({ piece }) =>
+            canMove ? colorOfPiece(piece.pieceType) === turn : premoveMode && colorOfPiece(piece.pieceType) === props.premoveColor,
+          onSquareRightClick: props.onCancelPremove
+            ? () => {
+                setSelected(null)
+                props.onCancelPremove!()
+              }
+            : undefined,
+          showNotation: props.showCoordinates ?? true,
           squareStyles,
           arrows: arrows.map((a) => ({ startSquare: a.from, endSquare: a.to, color: a.color })),
           allowDrawingArrows: true,

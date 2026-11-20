@@ -1,0 +1,245 @@
+/* ================= Spielansicht: Spielerleisten, Uhr, Brettfarben ================= */
+
+/* ---------- Brettfarben (setzen nur CSS-Variablen, die Board.tsx nutzt) ---------- */
+.board-theme-sandstein {
+  --sq-light: #e4cf9f;
+  --sq-dark: #7d5534;
+  --last-move: rgba(212, 169, 74, 0.55);
+  --premove: rgba(142, 31, 26, 0.5);
+}
+.board-theme-marmor {
+  --sq-light: #ece5d6;
+  --sq-dark: #9c8f7b;
+  --last-move: rgba(196, 150, 60, 0.55);
+  --premove: rgba(142, 31, 26, 0.45);
+}
+.board-theme-burgstein {
+  --sq-light: #c8c2b4;
+  --sq-dark: #6c675e;
+  --last-move: rgba(212, 169, 74, 0.6);
+  --premove: rgba(160, 40, 30, 0.5);
+}
+.board-theme-turnier {
+  --sq-light: #e9e1c2;
+  --sq-dark: #6a8550;
+  --last-move: rgba(222, 196, 90, 0.6);
+  --premove: rgba(150, 35, 28, 0.5);
+}
+
+/* ---------- Brett mit Leisten darüber und darunter ---------- */
+.play-view {
+  --bar-h: 36px;
+  --bar-gap: 17px; /* Platz für den Holzrahmen (13 px Schatten) */
+}
+.play-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--bar-gap);
+  flex: 0 1 auto;
+  min-width: 0;
+  /* So breit wie möglich, aber Brett + Leisten nie höher als das Fenster */
+  width: min(100%, max(240px, calc(100dvh - 255px - 2 * (var(--bar-h) + var(--bar-gap)))));
+}
+.board-row .play-stack .board-wrap {
+  width: 100%;
+  margin: 0;
+}
+.play-view .board-row {
+  align-items: stretch;
+}
+.play-view .eval-bar {
+  margin: calc(var(--bar-h) + var(--bar-gap)) 0;
+}
+.play-view .status {
+  margin-bottom: 12px;
+}
+
+.player-bar {
+  height: var(--bar-h);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  color: #f1e2bd;
+}
+.player-avatar {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 24px;
+  line-height: 1;
+  font-variant-emoji: text;
+  border: 2px solid var(--gold);
+  box-shadow: 0 0 0 2px var(--wood), 0 2px 6px rgba(0, 0, 0, 0.6);
+}
+.player-avatar.white {
+  background: radial-gradient(circle at 40% 35%, #5a3a20, #2b1a0d);
+  color: #f3e6c4;
+}
+.player-avatar.black {
+  background: radial-gradient(circle at 40% 35%, #f3e6c4, #cdb17a);
+  color: #24160a;
+}
+.player-bar.to-move .player-avatar {
+  box-shadow: 0 0 0 2px var(--wood), 0 0 10px rgba(212, 169, 74, 0.8);
+}
+.player-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1 1 auto;
+  line-height: 1.15;
+}
+.player-name {
+  font-family: 'Cinzel', serif;
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: 0 1px 0 #000;
+}
+.player-captured {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 17px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.captured-pieces {
+  font-size: 15px;
+  letter-spacing: -2px;
+  font-variant-emoji: text;
+  overflow: hidden;
+  text-overflow: clip;
+}
+.captured-pieces.white {
+  color: #f3e6c4;
+  text-shadow: 0 0 1px #000, 0 1px 1px #000;
+}
+.captured-pieces.black {
+  color: #1a110a;
+  text-shadow: 0 0 1px rgba(241, 226, 189, 0.9), 0 0 2px rgba(212, 169, 74, 0.6);
+}
+.material-adv {
+  font-family: 'Cinzel', serif;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--gold);
+}
+
+/* ---------- Uhr ---------- */
+.player-clock {
+  flex: 0 0 auto;
+  min-width: 78px;
+  padding: 4px 10px;
+  text-align: right;
+  font-family: 'Cinzel', serif;
+  font-weight: 700;
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.5px;
+  color: #b8a27a;
+  background: rgba(20, 12, 6, 0.6);
+  border: 1px solid rgba(212, 169, 74, 0.35);
+  border-radius: 4px;
+  transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+}
+.player-clock.running {
+  color: var(--text);
+  background: linear-gradient(180deg, #f1e3c0, #d8c08e);
+  border-color: var(--gold);
+  box-shadow: 0 0 0 2px var(--wood), 0 0 12px rgba(212, 169, 74, 0.55);
+}
+.player-clock.low {
+  color: #f6e2b0;
+  background: radial-gradient(ellipse at 50% 30%, #b8322a, #7d1914 75%);
+  border-color: #4e0e0b;
+}
+.player-clock.low.running {
+  animation: clock-pulse 1s ease-in-out infinite;
+}
+.player-clock.flagged {
+  opacity: 0.85;
+  animation: none;
+}
+@keyframes clock-pulse {
+  50% {
+    box-shadow: 0 0 0 2px var(--wood), 0 0 18px rgba(201, 58, 49, 0.9);
+  }
+}
+
+/* ---------- Knöpfe unter dem Brett ---------- */
+.play-view .nav {
+  grid-template-columns: repeat(4, 1fr) auto;
+}
+.flip-btn[aria-pressed='true'] {
+  background: linear-gradient(180deg, #e2c27a, #c9a254);
+  border-color: var(--accent-2);
+}
+.premove-cancel {
+  display: block;
+  margin: 8px auto 0;
+  font-size: 13px;
+  padding: 5px 12px;
+  background: linear-gradient(180deg, #f0d7c6, #d9aa94);
+  border-color: var(--accent-2);
+}
+
+/* ---------- Seitenleiste ---------- */
+.tc-seg {
+  grid-template-columns: repeat(3, 1fr);
+}
+.tc-seg button {
+  font-variant-numeric: tabular-nums;
+}
+.theme-picker {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+.theme-swatch {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 2px;
+  font-size: 11px;
+  letter-spacing: 0;
+}
+.theme-swatch .swatch {
+  width: 30px;
+  height: 30px;
+  border: 2px solid var(--wood);
+  outline: 1px solid var(--gold);
+  background: conic-gradient(var(--sq-light) 0 25%, var(--sq-dark) 0 50%, var(--sq-light) 0 75%, var(--sq-dark) 0);
+  background-size: 15px 15px;
+}
+.theme-swatch[aria-pressed='true'] {
+  background: linear-gradient(180deg, #e2c27a, #c9a254);
+  box-shadow: inset 0 0 0 1px var(--accent-2), inset 0 2px 4px rgba(0, 0, 0, 0.25);
+  border-color: var(--accent-2);
+}
+
+@media (max-width: 860px) {
+  .play-view {
+    --bar-h: 34px;
+    --bar-gap: 16px;
+  }
+  .play-view .btn-label {
+    display: none;
+  }
+  .player-clock {
+    min-width: 66px;
+    font-size: 17px;
+    padding: 3px 7px;
+  }
+  .player-name {
+    font-size: 13px;
+  }
+}

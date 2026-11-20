@@ -3,19 +3,31 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { StockfishEngine } from '../engine/stockfish'
 import { levelConfig } from '../engine/strength'
 import { splitUci } from '../engine/uci'
-import { computeStatus } from './status'
+import { computeStatus, type GameStatus } from './status'
 
 const ENGINE_MIN_DELAY_MS = 350 // damit die Antwort nicht unnatürlich sofort kommt
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
-export function useGame(engine: StockfishEngine | null, level: number) {
+export type UseGameOptions = {
+  /**
+   * Höchste Bedenkzeit der Engine für den nächsten Zug in ms (z. B. aus der Schachuhr),
+   * `null` = keine Begrenzung. Wird beim Start jeder Engine-Suche abgefragt.
+   */
+  engineTimeLimit?: () => number | null
+}
+
+export function useGame(engine: StockfishEngine | null, level: number, options: UseGameOptions = {}) {
+  const limitRef = useRef(options.engineTimeLimit)
+  limitRef.current = options.engineTimeLimit
   const chessRef = useRef(new Chess())
   const gameId = useRef(0)
   const [fen, setFen] = useState(() => chessRef.current.fen())
   const [moves, setMoves] = useState<Move[]>([])
   const [playerColor, setPlayerColor] = useState<Color>('w')
   const [resigned, setResigned] = useState<Color | null>(null)
+  /** Von aussen beendete Partie (Zeit abgelaufen, Remis vereinbart). */
+  const [forced, setForced] = useState<GameStatus | null>(null)
   const [thinking, setThinking] = useState(false)
   const [gameNo, setGameNo] = useState(0)
 
@@ -27,7 +39,10 @@ export function useGame(engine: StockfishEngine | null, level: number) {
   }, [chess])
 
   // fen/resigned als Abhängigkeit: der Status hängt am veränderlichen chess-Objekt
-  const status = useMemo(() => computeStatus(chess, resigned), [chess, fen, resigned])
+  const status = useMemo(() => {
+    const s = computeStatus(chess, resigned)
+    return s.over || !forced ? s : forced
+  }, [chess, fen, resigned, forced])
 
   const isPlayerTurn = !status.over && !thinking && chess.turn() === playerColor
 
@@ -38,14 +53,14 @@ export function useGame(engine: StockfishEngine | null, level: number) {
     const fenNow = chess.fen()
     let cancelled = false
     const cfg = levelConfig(level)
+    const limit = limitRef.current?.() ?? null
+    const movetime = limit === null ? cfg.movetime : Math.min(cfg.movetime ?? limit, limit)
+    const delay = limit === null ? ENGINE_MIN_DELAY_MS : Math.min(ENGINE_MIN_DELAY_MS, limit / 3)
     setThinking(true)
 
     ;(async () => {
       await engine.setOptions({ 'Skill Level': cfg.skill })
-      const [res] = await Promise.all([
-        engine.search(fenNow, { depth: cfg.depth, movetime: cfg.movetime }),
-        sleep(ENGINE_MIN_DELAY_MS),
-      ])
+      const [res] = await Promise.all([engine.search(fenNow, { depth: cfg.depth, movetime }), sleep(delay)])
       if (cancelled || id !== gameId.current || chess.fen() !== fenNow || !res.bestmove) return
       try {
         chess.move(splitUci(res.bestmove))
@@ -97,6 +112,7 @@ export function useGame(engine: StockfishEngine | null, level: number) {
   const undo = useCallback(() => {
     gameId.current++
     setResigned(null)
+    setForced(null)
     let undone = 0
     while (chess.history().length > 0) {
       const m = chess.undo()
@@ -112,6 +128,7 @@ export function useGame(engine: StockfishEngine | null, level: number) {
       if (startFen) chess.load(startFen)
       else chess.reset()
       setResigned(null)
+      setForced(null)
       setGameNo((n) => n + 1)
       setPlayerColor(color)
       engine?.newGame()
@@ -123,6 +140,14 @@ export function useGame(engine: StockfishEngine | null, level: number) {
   const resign = useCallback(() => {
     if (!status.over) setResigned(playerColor)
   }, [playerColor, status.over])
+
+  /** Beendet die laufende Partie von aussen (z. B. Zeit abgelaufen, Remis vereinbart). */
+  const finish = useCallback(
+    (s: GameStatus) => {
+      if (!status.over && s.over) setForced(s)
+    },
+    [status.over],
+  )
 
   return {
     chess,
@@ -139,5 +164,6 @@ export function useGame(engine: StockfishEngine | null, level: number) {
     undo,
     newGame,
     resign,
+    finish,
   }
 }

@@ -20,6 +20,7 @@ Node liegt portabel in `C:\Users\fbrazerol\tools\node` (im User-PATH; in alten S
 - `npm run build` – Typecheck + Produktions-Build
 - Browser-Tests (brauchen `npm run build` + laufendes `npm run preview` auf :4173):
   `node scripts/e2e-smoke.mjs` (Spiel + Coach), `e2e-phase3.mjs` (Profil, Puzzle, Statistik), `e2e-phase4.mjs` (Endspiel, PGN-Analyse)
+  `e2e-play.mjs` (Spielansicht: Uhr inkl. Zeitüberschreitung ~1 Min., Premove, Brett drehen, Brettfarben, Handy-Layout)
   Selektoren: Brettfelder über `#<board-id>-square-e4` (IDs: play / puzzle / review); die Spielansicht bleibt versteckt gemountet → `:visible` nutzen
 - `npm install` kopiert die Engine via `postinstall` nach `public/stockfish/` (nicht committen)
 
@@ -27,6 +28,7 @@ Node liegt portabel in `C:\Users\fbrazerol\tools\node` (im User-PATH; in alten S
 - `src/engine/` – `stockfish.ts` (Worker-Wrapper, serielle Queue), `uci.ts` (reine Parser), `strength.ts` (Stufen 1–10)
 - `src/game/` – `useGame.ts` (Partiezustand, Engine-Antwort), `status.ts` (Spielende, Schach)
 - `src/game/positions.ts` – Startstellungen (Eröffnungen, Endspiel-Übungen)
+- `src/game/clock.ts` (Schachuhr gegen den Computer, rein), `useClock.ts`, `material.ts` (geschlagene Figuren, Materialbilanz)
 - `src/analysis/` – `explain.ts` (Einstufung + Motiv-Erkennung → Erklärtext), `useCoach.ts` (2. Engine, Analyse-Cache), `eval.ts`, `pieces.ts`
 - `src/profile/` – `profile.ts` (Partien, Fehler, Puzzles/Leitner, Schwächen; localStorage), `settings.ts` (Stufe, Auto-Stufe, Ton), `motifInfo.ts`
 - `src/views/` – PlayView, TrainingView, ReviewView, StatsView; `src/ui/` – Board, CoachPanel, EvalBar, MoveList, sound

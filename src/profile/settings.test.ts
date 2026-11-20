@@ -20,9 +20,27 @@ describe('adaptLevel', () => {
 
 describe('loadSettings', () => {
   it('liefert Standardwerte bei leerem oder kaputtem Speicher', () => {
-    expect(loadSettings({ getItem: () => null })).toEqual({ level: 3, autoLevel: true, sound: true })
+    expect(loadSettings({ getItem: () => null })).toEqual({
+      level: 3,
+      autoLevel: true,
+      sound: true,
+      boardTheme: 'sandstein',
+      showCoords: true,
+      timeControl: 'none',
+    })
     expect(loadSettings({ getItem: () => '{x' }).level).toBe(3)
     expect(loadSettings({ getItem: () => '{"level":7}' }).level).toBe(7)
+  })
+  it('liest alte Speicherstände ohne neue Felder und verwirft unbekannte Werte', () => {
+    const old = loadSettings({ getItem: () => '{"level":5,"autoLevel":false,"sound":false}' })
+    expect(old).toMatchObject({ level: 5, autoLevel: false, sound: false, boardTheme: 'sandstein', showCoords: true, timeControl: 'none' })
+    const s = loadSettings({ getItem: () => '{"boardTheme":"marmor","showCoords":false,"timeControl":"3+2"}' })
+    expect(s).toMatchObject({ boardTheme: 'marmor', showCoords: false, timeControl: '3+2' })
+    expect(loadSettings({ getItem: () => '{"boardTheme":"pink","showCoords":"ja"}' })).toMatchObject({
+      boardTheme: 'sandstein',
+      showCoords: true,
+    })
+    expect(loadSettings({ getItem: () => 'null' }).level).toBe(3)
   })
 })
 

@@ -92,7 +92,7 @@ export default function App() {
   const due = duePuzzles(profile).length
 
   return (
-    <div className="app">
+    <div className={`app board-theme-${settings.boardTheme}`}>
       <header className="top">
         <h1>
           ♞ Schach<span>Trainer</span>
@@ -131,6 +131,8 @@ export default function App() {
           sound={settings.sound}
           onGameFinished={onGameFinished}
           onReview={openReview}
+          prefs={settings}
+          onPref={set}
         />
       </div>
       {tab === 'train' && <TrainingView engine={engines?.coach ?? null} profile={profile} onAnswer={onAnswer} />}
