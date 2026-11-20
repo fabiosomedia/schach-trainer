@@ -17,8 +17,9 @@ export function MoveList({ moves, analyses, selected, onSelect }: Props) {
   // würde bei schmalen Fenstern bei jedem Zug die Seite unter das Brett springen lassen).
   useEffect(() => {
     const el = listRef.current
-    if (el && !onSelect) el.scrollTop = el.scrollHeight
-  }, [moves.length, onSelect])
+    // Nur mitlaufen, solange nichts ausgewählt ist (Live-Partie)
+    if (el && selected === undefined) el.scrollTop = el.scrollHeight
+  }, [moves.length, selected])
 
   // Partien können aus einer FEN starten – Zugnummer und erste Farbe daraus ableiten.
   const first = moves[0]

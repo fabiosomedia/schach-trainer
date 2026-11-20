@@ -93,7 +93,7 @@ button.primary {
 .board-wrap {
   position: relative;
   /* So breit wie möglich, aber nie höher als das Fenster (Header + Status ≈ 150 px) */
-  width: min(100%, max(260px, calc(100dvh - 200px)));
+  width: min(100%, max(260px, calc(100dvh - 255px)));
   margin: 0 auto;
 }
 

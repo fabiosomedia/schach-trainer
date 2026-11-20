@@ -1,5 +1,5 @@
-import type { Color } from 'chess.js'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Chess, type Color } from 'chess.js'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { CATEGORY_INFO, isBad, type Category } from '../analysis/classify'
 import { useCoach } from '../analysis/useCoach'
 import type { StockfishEngine } from '../engine/stockfish'
@@ -44,11 +44,47 @@ export function PlayView(props: Props) {
   const lastMove = moves[moves.length - 1]
   const cfg = levelConfig(level)
 
+  // --- Zurückblättern in der laufenden Partie (nur ansehen, nichts zurücknehmen) ---
+  const [viewPly, setViewPly] = useState<number | null>(null)
+  const viewing = viewPly !== null && viewPly < moves.length - 1
+  useEffect(() => setViewPly(null), [gameNo])
+  const goTo = useCallback(
+    (p: number) => {
+      const clamped = Math.max(-1, Math.min(moves.length - 1, p))
+      setViewPly(clamped >= moves.length - 1 ? null : clamped)
+    },
+    [moves.length],
+  )
+  const current = viewing ? viewPly! : moves.length - 1
+  const viewFen = !viewing ? fen : viewPly === -1 ? moves[0].before : moves[viewPly!].after
+  const viewCheck = useMemo(() => (viewing ? checkedKingSquare(new Chess(viewFen)) : null), [viewing, viewFen])
+
+  const rootRef = useRef<HTMLElement>(null)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      // Spielansicht bleibt in anderen Tabs versteckt gemountet → nur reagieren, wenn sichtbar
+      if (!rootRef.current || rootRef.current.offsetParent === null) return
+      const tag = (e.target as HTMLElement)?.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
+      if (e.key === 'ArrowLeft') goTo(current - 1)
+      else if (e.key === 'ArrowRight') goTo(current + 1)
+      else return
+      e.preventDefault()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [goTo, current])
+
   const lastPlayerPly = useMemo(() => {
     for (let i = moves.length - 1; i >= 0; i--) if (moves[i].color === playerColor) return i
     return -1
   }, [moves, playerColor])
   const lastAnalysis = lastPlayerPly >= 0 ? (coach.analyses[lastPlayerPly] ?? null) : null
+  const viewAnalysis = useMemo(() => {
+    if (!viewing) return null
+    for (let i = viewPly!; i >= 0; i--) if (moves[i].color === playerColor) return coach.analyses[i] ?? null
+    return null
+  }, [viewing, viewPly, moves, playerColor, coach.analyses])
   const analysisList = useMemo(
     () => Object.values(coach.analyses).sort((a, b) => a.ply - b.ply),
     [coach.analyses],
@@ -100,13 +136,14 @@ export function PlayView(props: Props) {
     bestNow && hintLevel >= 1 ? (hintLevel >= 2 ? [bestNow.slice(0, 2), bestNow.slice(2, 4)] : [bestNow.slice(0, 2)]) : []
 
   const arrows = useMemo(() => {
+    if (viewing) return viewAnalysis && viewAnalysis.ply === viewPly && isBad(viewAnalysis.category) ? viewAnalysis.arrows : []
     if (hintLevel >= 3 && bestNow) return [{ from: bestNow.slice(0, 2), to: bestNow.slice(2, 4), color: 'rgba(80, 200, 120, 0.85)' }]
     if (!lastAnalysis || !isBad(lastAnalysis.category)) return []
     // Direkt nach dem Fehler: besserer Zug + Drohung. Nach der Gegnerantwort nur noch der bessere Zug.
     if (lastPlayerPly === moves.length - 1) return lastAnalysis.arrows
     if (lastPlayerPly === moves.length - 2 && isPlayerTurn) return lastAnalysis.arrows.slice(0, 1)
     return []
-  }, [hintLevel, bestNow, lastAnalysis, isPlayerTurn, lastPlayerPly, moves.length])
+  }, [viewing, viewAnalysis, viewPly, hintLevel, bestNow, lastAnalysis, isPlayerTurn, lastPlayerPly, moves.length])
 
   const startPos = findPosition(startId)
   const startNewGame = () => {
@@ -134,28 +171,54 @@ export function PlayView(props: Props) {
   else if (thinking) statusText = 'Stockfish denkt …'
   else if (isPlayerTurn) statusText = checkSquare ? 'Schach! Du bist am Zug' : 'Du bist am Zug'
   else statusText = '…'
+  if (viewing) {
+    const m = viewPly! >= 0 ? moves[viewPly!] : null
+    const no = m ? Number(m.before.split(' ')[5]) : 0
+    statusText = m ? `Ansicht: ${no}${m.color === 'w' ? '.' : '…'} ${m.san} – Partie läuft weiter` : 'Ansicht: Startstellung'
+  }
 
   const counts = SUMMARY_ORDER.map((c) => [c, analysisList.filter((a) => a.category === c).length] as const)
 
   return (
-    <main className="layout">
+    <main className="layout" ref={rootRef}>
       <section className="board-col">
-        <div className={`status ${status.over ? 'over' : ''} ${thinking ? 'thinking' : ''}`}>{statusText}</div>
+        <div className={`status ${status.over && !viewing ? 'over' : ''} ${thinking && !viewing ? 'thinking' : ''} ${viewing ? 'viewing' : ''}`}>
+          {statusText}
+        </div>
         <div className="board-row">
-          <EvalBar score={coach.currentEval?.score ?? null} orientation={playerColor} />
+          <EvalBar score={(viewing ? coach.evals[viewFen]?.score : coach.currentEval?.score) ?? null} orientation={playerColor} />
           <Board
             id="play"
-            fen={fen}
+            fen={viewFen}
             orientation={playerColor}
-            lastMove={lastMove}
-            checkSquare={checkSquare}
-            canMove={isPlayerTurn}
+            lastMove={viewing ? (viewPly! >= 0 ? moves[viewPly!] : undefined) : lastMove}
+            checkSquare={viewing ? viewCheck : checkSquare}
+            canMove={isPlayerTurn && !viewing}
             legalTargets={game.legalTargets}
             needsPromotion={game.needsPromotion}
             onMove={game.playMove}
             arrows={arrows}
-            hintSquares={hintSquares}
+            hintSquares={viewing ? [] : hintSquares}
           />
+        </div>
+        <div className="row nav">
+          <button onClick={() => goTo(-1)} disabled={moves.length === 0 || current === -1} title="Zum Anfang">
+            ⏮
+          </button>
+          <button onClick={() => goTo(current - 1)} disabled={moves.length === 0 || current === -1} title="Zug zurück (←)">
+            ◀
+          </button>
+          <button onClick={() => goTo(current + 1)} disabled={!viewing} title="Zug vor (→)">
+            ▶
+          </button>
+          <button
+            className={viewing ? 'primary' : ''}
+            onClick={() => setViewPly(null)}
+            disabled={!viewing}
+            title="Zur aktuellen Stellung"
+          >
+            {viewing ? '⏭ Aktuell' : '⏭'}
+          </button>
         </div>
       </section>
 
@@ -191,18 +254,18 @@ export function PlayView(props: Props) {
         )}
 
         <CoachPanel
-          analysis={lastAnalysis}
-          waiting={lastPlayerPly >= 0 && !lastAnalysis}
-          canRetry={!!lastAnalysis && isBad(lastAnalysis.category)}
+          analysis={viewing ? viewAnalysis : lastAnalysis}
+          waiting={!viewing && lastPlayerPly >= 0 && !lastAnalysis}
+          canRetry={!viewing && !!lastAnalysis && isBad(lastAnalysis.category)}
           onRetry={game.undo}
           hintLevel={hintLevel}
-          canHint={isPlayerTurn && !!bestNow}
+          canHint={!viewing && isPlayerTurn && !!bestNow}
           onHint={() => setHint({ fen, level: hintLevel + 1 })}
         />
 
         <div className="card">
           <h2>Züge</h2>
-          <MoveList moves={moves} analyses={coach.analyses} />
+          <MoveList moves={moves} analyses={coach.analyses} selected={viewing ? viewPly! : undefined} onSelect={goTo} />
           <div className="row">
             <button onClick={game.undo} disabled={moves.length === 0}>
               ↶ Zurück
