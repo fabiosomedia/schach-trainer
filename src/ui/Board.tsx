@@ -11,6 +11,8 @@ type Props = {
   legalTargets: (from: Square) => Square[]
   needsPromotion: (from: Square, to: Square) => boolean
   onMove: (from: Square, to: Square, promotion?: string) => boolean
+  arrows?: { from: string; to: string; color: string }[]
+  hintSquares?: string[]
 }
 
 const PROMO_PIECES = [
@@ -24,6 +26,8 @@ const colorOfPiece = (pieceType: string): Color => (pieceType[0] === 'w' ? 'w' :
 
 export function Board(props: Props) {
   const { fen, orientation, lastMove, checkSquare, canMove, legalTargets, needsPromotion, onMove } = props
+  const arrows = props.arrows ?? []
+  const hintSquares = props.hintSquares ?? []
   const [selected, setSelected] = useState<Square | null>(null)
   const [promo, setPromo] = useState<{ from: Square; to: Square } | null>(null)
 
@@ -70,6 +74,9 @@ export function Board(props: Props) {
       background: 'radial-gradient(circle, rgba(255,60,60,.95) 0%, rgba(255,60,60,.45) 45%, transparent 75%)',
     }
   }
+  for (const h of hintSquares) {
+    squareStyles[h] = { ...squareStyles[h], boxShadow: 'inset 0 0 0 4px rgba(80, 200, 120, 0.9)' }
+  }
   if (selected) squareStyles[selected] = { ...squareStyles[selected], boxShadow: 'inset 0 0 0 4px var(--accent)' }
   for (const t of targets) {
     squareStyles[t] = {
@@ -90,6 +97,8 @@ export function Board(props: Props) {
           onSquareClick,
           canDragPiece: ({ piece }) => canMove && colorOfPiece(piece.pieceType) === turn,
           squareStyles,
+          arrows: arrows.map((a) => ({ startSquare: a.from, endSquare: a.to, color: a.color })),
+          allowDrawingArrows: true,
           animationDurationInMs: 220,
           darkSquareStyle: { backgroundColor: 'var(--sq-dark)' },
           lightSquareStyle: { backgroundColor: 'var(--sq-light)' },

@@ -1,28 +1,43 @@
 import type { Move } from 'chess.js'
 import { useEffect, useRef } from 'react'
+import { CATEGORY_INFO } from '../analysis/classify'
+import type { MoveAnalysis } from '../analysis/explain'
 
-export function MoveList({ moves }: { moves: Move[] }) {
+type Props = { moves: Move[]; analyses: Record<number, MoveAnalysis> }
+
+export function MoveList({ moves, analyses }: Props) {
   const endRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: 'nearest' })
   }, [moves.length])
 
-  // Falls die Partie mit Schwarz am Zug beginnt, kommt das hier nicht vor – Start ist immer Grundstellung.
-  const rows: { n: number; w?: string; b?: string }[] = []
-  moves.forEach((m, i) => {
-    const n = Math.floor(i / 2) + 1
-    if (i % 2 === 0) rows.push({ n, w: m.san })
-    else rows[rows.length - 1].b = m.san
-  })
+  const cell = (ply: number) => {
+    const m = moves[ply]
+    if (!m) return <span className="move" />
+    const a = analyses[ply]
+    const info = a ? CATEGORY_INFO[a.category] : null
+    const mark = a && a.category !== 'good' ? info!.symbol : ''
+    return (
+      <span className="move" title={info ? `${info.label}: ${a!.text}` : undefined}>
+        {m.san}
+        {mark && (
+          <span className="mark" style={{ color: info!.color }}>
+            {mark}
+          </span>
+        )}
+      </span>
+    )
+  }
 
+  const rows = Math.ceil(moves.length / 2)
   return (
     <div className="move-list">
-      {rows.length === 0 && <div className="muted">Noch keine Züge</div>}
-      {rows.map((r) => (
-        <div className="move-row" key={r.n}>
-          <span className="move-n">{r.n}.</span>
-          <span className="move">{r.w}</span>
-          <span className="move">{r.b ?? ''}</span>
+      {rows === 0 && <div className="muted">Noch keine Züge</div>}
+      {Array.from({ length: rows }, (_, r) => (
+        <div className="move-row" key={r}>
+          <span className="move-n">{r + 1}.</span>
+          {cell(r * 2)}
+          {cell(r * 2 + 1)}
         </div>
       ))}
       <div ref={endRef} />

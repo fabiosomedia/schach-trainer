@@ -76,20 +76,20 @@ public/
 - **Fertig wenn:** Eine komplette Partie gegen Stockfish spielbar ist.
 
 ### Phase 2 – Analyse & Coach
-- [ ] Bewertungsleiste (Eval Bar) live
-- [ ] Nach jedem Spielerzug: Bewertung vorher (bester Zug) vs. nachher → Centipawn-Verlust
-- [ ] Klassifikation (über Gewinnwahrscheinlichkeit, damit ±10 nicht wie ±1 zählt):
-      Bester / Gut / Ungenau / Fehler / Patzer
-- [ ] Motiv-Erkennung (regelbasiert):
+- [x] Bewertungsleiste (Eval Bar) live
+- [x] Nach jedem Spielerzug: Bewertung vorher (bester Zug) vs. nachher → Centipawn-Verlust
+- [x] Klassifikation (über Gewinnwahrscheinlichkeit, damit ±10 nicht wie ±1 zählt):
+      Bester / Gut / Ungenau / Fehler / Patzer (Schwellen 5 / 10 / 15 Prozentpunkte wie Lichess)
+- [x] Motiv-Erkennung (regelbasiert):
   - Figur hängt (ungedeckt angegriffen) / Figur eingestellt
   - Gabel übersehen (eigene Chance oder gegnerische Drohung)
-  - Fesselung / Spiess
+  - Fesselung / Spiess *(noch offen – kommt mit Phase 3/4)*
   - Matt in N verpasst / Mattdrohung übersehen
   - Ungünstiger Abtausch (Materialbilanz)
   - Eröffnungsprinzipien (Figuren entwickeln, Zentrum, früh rochieren, Dame nicht zu früh)
-- [ ] Coach-Panel: Erklärung + besserer Zug als Pfeil auf dem Brett
-- [ ] „Nochmal versuchen“: Fehlerzug zurücknehmen und es selbst besser machen
-- [ ] Hinweis-Knopf (stufenweise: Figur → Feld → Zug)
+- [x] Coach-Panel: Erklärung + besserer Zug als Pfeil auf dem Brett
+- [x] „Nochmal versuchen“: Fehlerzug zurücknehmen und es selbst besser machen
+- [x] Hinweis-Knopf (stufenweise: Figur → Feld → Zug)
 - **Fertig wenn:** Jeder Fehler wird markiert und verständlich erklärt.
 
 ### Phase 3 – Schwächen-Profil & Puzzles
@@ -110,10 +110,10 @@ public/
 ## 5. Bewertungs-Logik (Details)
 
 - Engine liefert `score cp X` oder `score mate N` aus Sicht der Seite am Zug → immer auf Weiss normieren.
-- Gewinnwahrscheinlichkeit: `W = 1 / (1 + 10^(-cp/400))`.
+- Gewinnwahrscheinlichkeit (Lichess-Formel): `W = 50 + 50·(2/(1+e^(−0.00368·cp)) − 1)`.
 - Verlust = W(bester Zug) − W(gespielter Zug) aus Sicht des Spielers:
-  - < 2 % → Bester/Gut, 2–5 % → Gut, 5–10 % → Ungenau, 10–20 % → Fehler, > 20 % → Patzer
-- Analyse-Tiefe ~12–14 (schnell genug im Browser, < 1 s).
+  - < 5 → Gut (bzw. Bester, wenn = Engine-Zug), 5–10 → Ungenau, 10–15 → Fehler, ≥ 15 → Patzer
+- Analyse-Tiefe 13 mit separater Coach-Engine (2. Worker), damit Spiel und Analyse sich nicht blockieren.
 
 ## 6. Risiken
 
