@@ -1,0 +1,228 @@
+:root {
+  --bg: #12141a;
+  --bg-2: #1b1e27;
+  --card: #20242f;
+  --border: #2e3342;
+  --text: #e8eaf0;
+  --muted: #8a90a2;
+  --accent: #f0a63a;
+  --accent-2: #ffcf7a;
+  --sq-light: #e9dcc4;
+  --sq-dark: #9c7a5b;
+  --last-move: rgba(240, 166, 58, 0.45);
+  --danger: #ff5c5c;
+
+  color-scheme: dark;
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  color: var(--text);
+  background: var(--bg);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: radial-gradient(1200px 600px at 20% -10%, #2a2340 0%, transparent 60%), var(--bg);
+}
+
+button {
+  font: inherit;
+  color: var(--text);
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.05s;
+}
+button:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+button.primary {
+  background: linear-gradient(180deg, var(--accent-2), var(--accent));
+  color: #1a1306;
+  font-weight: 700;
+  border: none;
+  padding: 11px;
+}
+
+.app {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+.top h1 {
+  margin: 4px 0 16px;
+  font-size: 26px;
+  letter-spacing: 0.5px;
+}
+.top h1 span {
+  color: var(--accent);
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 20px;
+  align-items: start;
+}
+
+.board-col {
+  min-width: 0;
+}
+.board-wrap {
+  position: relative;
+  width: min(100%, calc(100vh - 140px));
+  margin: 0 auto;
+}
+
+.status {
+  text-align: center;
+  font-weight: 600;
+  padding: 8px;
+  margin-bottom: 10px;
+  border-radius: 8px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+}
+.status.thinking {
+  color: var(--accent-2);
+}
+.status.over {
+  background: linear-gradient(90deg, #3a2a10, #2a1f10);
+  border-color: var(--accent);
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.card h2 {
+  margin: 0;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--muted);
+}
+
+.seg {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+.seg button {
+  white-space: nowrap;
+  padding: 8px 4px;
+}
+.seg button[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: #2c2618;
+}
+
+.level {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.level-head {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+}
+.level-head strong {
+  color: var(--accent-2);
+}
+.level input {
+  accent-color: var(--accent);
+  width: 100%;
+}
+
+.move-list {
+  max-height: 320px;
+  overflow-y: auto;
+  font-family: ui-monospace, 'Cascadia Code', Consolas, monospace;
+  font-size: 14px;
+  background: var(--bg-2);
+  border-radius: 8px;
+  padding: 6px;
+}
+.move-row {
+  display: grid;
+  grid-template-columns: 36px 1fr 1fr;
+  padding: 2px 4px;
+}
+.move-row:nth-child(even) {
+  background: rgba(255, 255, 255, 0.03);
+}
+.move-n {
+  color: var(--muted);
+}
+.muted {
+  color: var(--muted);
+  padding: 6px;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.promo-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  z-index: 10;
+}
+.promo-box {
+  background: var(--card);
+  border: 1px solid var(--accent);
+  border-radius: 12px;
+  padding: 14px 18px;
+  text-align: center;
+}
+.promo-choices {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+.promo-choices button {
+  font-size: 40px;
+  width: 64px;
+  height: 64px;
+  line-height: 1;
+  padding: 0;
+}
+
+@media (max-width: 860px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+  .board-wrap {
+    width: 100%;
+  }
+}
