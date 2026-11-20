@@ -11,14 +11,16 @@ import {
   type GameInput,
   type Profile,
 } from './profile/profile'
+import { joinIdFromSearch } from './online/protocol'
 import { adaptLevel, loadSettings, saveSettings, type Settings } from './profile/settings'
 import { playSound } from './ui/sound'
+import { OnlineView } from './views/OnlineView'
 import { PlayView } from './views/PlayView'
 import { ReviewView } from './views/ReviewView'
 import { StatsView } from './views/StatsView'
 import { TrainingView } from './views/TrainingView'
 
-type Tab = 'play' | 'train' | 'review' | 'stats'
+type Tab = 'play' | 'train' | 'review' | 'stats' | 'online'
 
 /** Zwei Engines: eine spielt, eine analysiert – so blockieren sie sich nicht. */
 function useEngines() {
@@ -44,7 +46,7 @@ export default function App() {
   const engines = useEngines()
   const [profile, setProfile] = usePersisted<Profile>(loadProfile, saveProfile)
   const [settings, setSettings] = usePersisted<Settings>(loadSettings, saveSettings)
-  const [tab, setTab] = useState<Tab>('play')
+  const [tab, setTab] = useState<Tab>(() => (joinIdFromSearch(location.search) ? 'online' : 'play'))
   const [toast, setToast] = useState<string | null>(null)
   const [review, setReview] = useState<{ pgn: string; color: Color; key: number } | null>(null)
 
@@ -110,6 +112,9 @@ export default function App() {
           <button aria-pressed={tab === 'stats'} onClick={() => setTab('stats')}>
             Statistik
           </button>
+          <button aria-pressed={tab === 'online'} onClick={() => setTab('online')}>
+            Online
+          </button>
           <button
             className="icon"
             title={settings.sound ? 'Ton aus' : 'Ton an'}
@@ -132,6 +137,10 @@ export default function App() {
           onGameFinished={onGameFinished}
           onReview={openReview}
         />
+      </div>
+      {/* Online-Partie bleibt ebenfalls gemountet (Verbindung + laufende Partie) */}
+      <div hidden={tab !== 'online'}>
+        <OnlineView sound={settings.sound} onReview={openReview} />
       </div>
       {tab === 'train' && <TrainingView engine={engines?.coach ?? null} profile={profile} onAnswer={onAnswer} sound={settings.sound} />}
       {tab === 'review' && <ReviewView engine={engines?.coach ?? null} initial={review} />}
