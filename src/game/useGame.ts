@@ -17,6 +17,7 @@ export function useGame(engine: StockfishEngine | null, level: number) {
   const [playerColor, setPlayerColor] = useState<Color>('w')
   const [resigned, setResigned] = useState<Color | null>(null)
   const [thinking, setThinking] = useState(false)
+  const [gameNo, setGameNo] = useState(0)
 
   const chess = chessRef.current
 
@@ -110,6 +111,7 @@ export function useGame(engine: StockfishEngine | null, level: number) {
       gameId.current++
       chess.reset()
       setResigned(null)
+      setGameNo((n) => n + 1)
       setPlayerColor(color)
       engine?.newGame()
       sync()
@@ -123,6 +125,7 @@ export function useGame(engine: StockfishEngine | null, level: number) {
 
   return {
     chess,
+    gameNo,
     fen,
     moves,
     playerColor,

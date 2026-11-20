@@ -93,11 +93,12 @@ public/
 - **Fertig wenn:** Jeder Fehler wird markiert und verständlich erklärt.
 
 ### Phase 3 – Schwächen-Profil & Puzzles
-- [ ] Profil speichern: Partien, Fehler pro Motiv, Fehler pro Spielphase (Eröffnung/Mittelspiel/Endspiel)
-- [ ] Statistik-Seite: Top-Schwächen, Genauigkeit pro Partie, Verlauf
-- [ ] Puzzles aus eigenen Fehlern: Stellung vor dem Fehler → „Finde den besten Zug“
-- [ ] Wiederholungs-Logik (Spaced Repetition): falsch gelöste Puzzles kommen öfter
+- [x] Profil speichern: Partien, Fehler pro Motiv, Fehler pro Spielphase (Eröffnung/Mittelspiel/Endspiel)
+- [x] Statistik-Seite: Top-Schwächen, Genauigkeit pro Partie, Verlauf
+- [x] Puzzles aus eigenen Fehlern: Stellung vor dem Fehler → „Finde den besten Zug“
+- [x] Wiederholungs-Logik (Spaced Repetition): falsch gelöste Puzzles kommen öfter
 - **Fertig wenn:** Nach ein paar Partien zeigt der Trainer deine Schwächen und übt sie.
+- Umgesetzt: Profil in `localStorage`, Tabs Spielen/Training/Statistik, Puzzle-Lösung auch mit gleichwertigem Alternativzug (Engine-Check ≤ 3 Prozentpunkte).
 
 ### Phase 4 – Adaptives Training & Feinschliff
 - [ ] Spielstärke passt sich automatisch an (Elo-Schätzung aus Resultaten + Genauigkeit)

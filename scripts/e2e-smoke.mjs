@@ -26,8 +26,8 @@ const coach = async () => ({
   tips: await page.$$eval('.coach .coach-tip', (els) => els.map((e) => e.textContent?.trim())),
 })
 const click = async (from, to) => {
-  await page.click(`[data-square="${from}"]`)
-  await page.click(`[data-square="${to}"]`)
+  await page.click(`#play-square-${from}`)
+  await page.click(`#play-square-${to}`)
 }
 
 await page.goto(url)

@@ -3,6 +3,8 @@ import { useMemo, useState, type CSSProperties } from 'react'
 import { Chessboard, type PieceDropHandlerArgs, type SquareHandlerArgs } from 'react-chessboard'
 
 type Props = {
+  /** Eindeutige ID – react-chessboard nutzt sie für DOM-IDs (zwei Bretter dürfen sie nicht teilen). */
+  id: string
   fen: string
   orientation: Color
   lastMove?: Move
@@ -91,6 +93,7 @@ export function Board(props: Props) {
     <div className="board-wrap">
       <Chessboard
         options={{
+          id: props.id,
           position: fen,
           boardOrientation: orientation === 'w' ? 'white' : 'black',
           onPieceDrop,
