@@ -133,7 +133,7 @@ export default function App() {
           onReview={openReview}
         />
       </div>
-      {tab === 'train' && <TrainingView engine={engines?.coach ?? null} profile={profile} onAnswer={onAnswer} />}
+      {tab === 'train' && <TrainingView engine={engines?.coach ?? null} profile={profile} onAnswer={onAnswer} sound={settings.sound} />}
       {tab === 'review' && <ReviewView engine={engines?.coach ?? null} initial={review} />}
       {tab === 'stats' && (
         <StatsView
