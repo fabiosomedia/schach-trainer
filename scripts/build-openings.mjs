@@ -131,6 +131,23 @@ for (const r of rows) {
   })
 }
 
+// Zweite Ausgabe für den Eröffnungs-Trainer: jede Linie mit ihrer Zugfolge (lazy geladen aus public/)
+const linesOut = join(dirname(out), '..', '..', 'public', 'openings', 'lines.json')
+const lineRows = []
+for (const r of [...rows].sort((a, b) => a.eco.localeCompare(b.eco) || a.name.localeCompare(b.name))) {
+  const c = new Chess()
+  try {
+    c.loadPgn(r.pgn)
+  } catch {
+    continue
+  }
+  lineRows.push([r.eco, translate(r.name), c.history().join(' ')])
+}
+mkdirSync(dirname(linesOut), { recursive: true })
+const linesJson = JSON.stringify({ source: 'lichess-org/chess-openings (CC0)', lines: lineRows })
+writeFileSync(linesOut, linesJson)
+console.log(`${lineRows.length} Linien → ${linesOut} (${(linesJson.length / 1024).toFixed(0)} KB)`)
+
 mkdirSync(dirname(out), { recursive: true })
 const json = JSON.stringify({ source: 'lichess-org/chess-openings (CC0)', names, pos })
 writeFileSync(out, json)

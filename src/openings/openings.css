@@ -1,0 +1,126 @@
+/* ================= Eröffnungs-Trainer ================= */
+.op-pick {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.op-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+}
+.op-course {
+  gap: 8px;
+}
+.op-intro {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.4;
+  flex: 1;
+}
+.op-side {
+  align-self: flex-start;
+  font-family: 'Cinzel', serif;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+}
+.op-side.w {
+  background: #f6ecd2;
+}
+.op-side.b {
+  background: #3a2414;
+  color: #f1e2bd;
+}
+.op-progress {
+  height: 8px;
+  border-radius: 4px;
+  background: rgba(120, 85, 40, 0.18);
+  overflow: hidden;
+}
+.op-progress div {
+  height: 100%;
+  background: linear-gradient(90deg, #3f8a4a, #6fb05a);
+  transition: width 0.4s ease;
+}
+.op-meta {
+  font-size: 13px;
+  color: var(--muted);
+}
+.op-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.op-search {
+  font: inherit;
+  width: 100%;
+  padding: 9px 10px;
+  border-radius: 4px;
+  border: 1px solid rgba(122, 90, 46, 0.6);
+  background: rgba(255, 250, 235, 0.7);
+  color: var(--text);
+}
+.op-results {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 360px;
+  overflow-y: auto;
+}
+.op-result {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  background: rgba(120, 85, 40, 0.08);
+}
+.op-result > div:first-child {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.op-result .op-meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.op-result .op-actions {
+  flex: 0 0 auto;
+}
+.op-name {
+  font-family: 'Cinzel', serif;
+  font-weight: 600;
+  font-size: 15px;
+}
+.op-done {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.op-empty {
+  max-width: 640px;
+  margin: 0 auto;
+}
+@media (max-width: 600px) {
+  .op-result {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+/* Mit vier Trainingsarten passt die Unternavigation auf dem Handy nicht mehr in eine Zeile */
+@media (max-width: 600px) {
+  .pz-modes {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .pz-modes button {
+    padding: 6px 9px;
+    font-size: 13px;
+  }
+}

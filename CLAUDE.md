@@ -34,6 +34,9 @@ Node liegt portabel in `C:\Users\fbrazerol\tools\node` (im User-PATH; in alten S
 - `src/analysis/` – `explain.ts` (Einstufung + Motiv-Erkennung → Erklärtext), `motifs.ts` (Fesselung, Spiess, Abzug, Grundreihe, Doppelangriff, gefangene Figur),
   `openings.ts` (Eröffnungsbuch, Buchzüge; Daten `src/data/openings.json`, neu erzeugen mit `node scripts/build-openings.mjs`),
   `gameReview.ts` (Schlüsselmomente, Leistungsschätzung), `EvalGraph.tsx`, `useCoach.ts` (2. Engine, Analyse-Cache), `eval.ts`, `pieces.ts`
+- `src/openings/` – Eröffnungs-Trainer (Training → Eröffnungen): `trainer.ts` (Variantenbaum, Gegnerwahl, Fortschritt in
+  localStorage `schach-trainer:openings`), `courses.ts` (kuratierte Kurse + Suche), Daten `public/openings/lines.json`
+  (wird von `scripts/build-openings.mjs` mit erzeugt); Browser-Test `e2e-openings.mjs`
 - `src/puzzles/` – Taktik-Puzzles (Lichess-DB, CC0, `public/puzzles/*.json`, erzeugt mit `scripts/build-puzzles.py`), Puzzle-Wertung, Sprint
 - Weitere Browser-Tests: `e2e-review.mjs` (Opera-Partie analysieren, Eröffnung, Bewertungskurve)
 - `src/profile/` – `profile.ts` (Partien, Fehler, Puzzles/Leitner, Schwächen; localStorage), `settings.ts` (Stufe, Auto-Stufe, Ton), `motifInfo.ts`

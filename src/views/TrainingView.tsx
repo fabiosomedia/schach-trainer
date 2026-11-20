@@ -5,6 +5,7 @@ import { positionScore } from '../analysis/explain'
 import type { StockfishEngine } from '../engine/stockfish'
 import { MOTIF_INFO } from '../profile/motifInfo'
 import { duePuzzles, type Profile, type Puzzle } from '../profile/profile'
+import { OpeningsMode } from '../openings/OpeningsMode'
 import { loadStats, saveStats, type PuzzleStats } from '../puzzles/puzzleLib'
 import { SprintMode } from '../puzzles/SprintMode'
 import { TacticsMode } from '../puzzles/TacticsMode'
@@ -19,19 +20,20 @@ type Props = {
   sound?: boolean
 }
 
-type Mode = 'tactics' | 'sprint' | 'mistakes'
+type Mode = 'tactics' | 'sprint' | 'openings' | 'mistakes'
 const MODE_KEY = 'schach-trainer:training-mode'
 
 const MODES: { id: Mode; label: string }[] = [
   { id: 'tactics', label: 'Taktik' },
   { id: 'sprint', label: 'Sprint' },
+  { id: 'openings', label: 'Eröffnungen' },
   { id: 'mistakes', label: 'Meine Fehler' },
 ]
 
 function loadMode(): Mode | null {
   try {
     const m = localStorage.getItem(MODE_KEY)
-    return m === 'tactics' || m === 'sprint' || m === 'mistakes' ? m : null
+    return m === 'tactics' || m === 'sprint' || m === 'openings' || m === 'mistakes' ? m : null
   } catch {
     return null
   }
@@ -64,6 +66,7 @@ export function TrainingView({ engine, profile, onAnswer, sound = true }: Props)
       </nav>
       {mode === 'tactics' && <TacticsMode stats={stats} setStats={setStats} sound={sound} />}
       {mode === 'sprint' && <SprintMode stats={stats} setStats={setStats} sound={sound} />}
+      {mode === 'openings' && <OpeningsMode engine={engine} sound={sound} />}
       {mode === 'mistakes' && <MistakesMode engine={engine} profile={profile} onAnswer={onAnswer} />}
     </>
   )
