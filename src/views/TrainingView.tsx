@@ -1,16 +1,72 @@
 import { Chess, type Square } from 'chess.js'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { forColor, winPercent } from '../analysis/eval'
 import { positionScore } from '../analysis/explain'
 import type { StockfishEngine } from '../engine/stockfish'
 import { MOTIF_INFO } from '../profile/motifInfo'
 import { duePuzzles, type Profile, type Puzzle } from '../profile/profile'
+import { loadStats, saveStats, type PuzzleStats } from '../puzzles/puzzleLib'
+import { SprintMode } from '../puzzles/SprintMode'
+import { TacticsMode } from '../puzzles/TacticsMode'
+import '../puzzles/puzzles.css'
 import { Board } from '../ui/Board'
 
 type Props = {
   engine: StockfishEngine | null
   profile: Profile
   onAnswer: (id: string, correct: boolean) => void
+  /** Ton für die Taktik-Puzzles (die eigenen Fehler spielen den Ton über onAnswer). */
+  sound?: boolean
+}
+
+type Mode = 'tactics' | 'sprint' | 'mistakes'
+const MODE_KEY = 'schach-trainer:training-mode'
+
+const MODES: { id: Mode; label: string }[] = [
+  { id: 'tactics', label: 'Taktik' },
+  { id: 'sprint', label: 'Sprint' },
+  { id: 'mistakes', label: 'Meine Fehler' },
+]
+
+function loadMode(): Mode | null {
+  try {
+    const m = localStorage.getItem(MODE_KEY)
+    return m === 'tactics' || m === 'sprint' || m === 'mistakes' ? m : null
+  } catch {
+    return null
+  }
+}
+
+export function TrainingView({ engine, profile, onAnswer, sound = true }: Props) {
+  // Fällige eigene Fehler haben Vorrang, sonst der zuletzt gewählte Modus
+  const [mode, setMode] = useState<Mode>(() => (duePuzzles(profile).length > 0 ? 'mistakes' : (loadMode() ?? 'tactics')))
+  const [stats, setStats] = useState<PuzzleStats>(() => loadStats())
+  useEffect(() => saveStats(stats), [stats])
+  useEffect(() => {
+    try {
+      localStorage.setItem(MODE_KEY, mode)
+    } catch {
+      /* egal */
+    }
+  }, [mode])
+  const due = duePuzzles(profile).length
+
+  return (
+    <>
+      <nav className="pz-modes" aria-label="Trainingsart">
+        {MODES.map((m) => (
+          <button key={m.id} aria-pressed={mode === m.id} onClick={() => setMode(m.id)} data-mode={m.id}>
+            {m.label}
+            {m.id === 'mistakes' && due > 0 && <span className="pill">{due}</span>}
+            {m.id === 'tactics' && <span className="pz-mode-rating">{stats.rating}</span>}
+          </button>
+        ))}
+      </nav>
+      {mode === 'tactics' && <TacticsMode stats={stats} setStats={setStats} sound={sound} />}
+      {mode === 'sprint' && <SprintMode stats={stats} setStats={setStats} sound={sound} />}
+      {mode === 'mistakes' && <MistakesMode engine={engine} profile={profile} onAnswer={onAnswer} />}
+    </>
+  )
 }
 
 type State =
@@ -21,7 +77,8 @@ type State =
 /** Ein Zug gilt auch als richtig, wenn er höchstens so viel Gewinnchance kostet. */
 const ACCEPT_LOSS = 3
 
-export function TrainingView({ engine, profile, onAnswer }: Props) {
+/** Puzzles aus eigenen Partien mit Wiederholungs-Logik (Leitner). */
+function MistakesMode({ engine, profile, onAnswer }: Omit<Props, 'sound'>) {
   const due = useMemo(() => duePuzzles(profile), [profile])
   const [current, setCurrent] = useState<Puzzle | null>(() => due[0] ?? null)
   const [fen, setFen] = useState(current?.fen ?? '')
@@ -108,7 +165,7 @@ export function TrainingView({ engine, profile, onAnswer }: Props) {
     return (
       <main className="layout single">
         <div className="card empty">
-          <h2>Training</h2>
+          <h2>Meine Fehler</h2>
           {total === 0 ? (
             <p>
               Noch keine Puzzles. Spiel ein paar Partien – aus jedem <strong>Fehler</strong> und <strong>Patzer</strong>{' '}

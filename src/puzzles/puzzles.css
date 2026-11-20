@@ -1,0 +1,172 @@
+/* ============ Taktik-Puzzles & Sprint (Training-Tab) ============ */
+
+.pz-modes {
+  display: flex;
+  gap: 6px;
+  margin: 0 auto 18px;
+  padding: 5px;
+  width: fit-content;
+  max-width: 100%;
+  background:
+    radial-gradient(ellipse at 30% 20%, rgba(255, 250, 230, 0.55), transparent 60%),
+    var(--card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow:
+    inset 0 0 20px rgba(120, 80, 30, 0.3),
+    0 0 0 3px rgba(58, 36, 20, 0.85),
+    0 0 0 4px rgba(212, 169, 74, 0.6);
+}
+.pz-modes button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  white-space: nowrap;
+}
+.pz-modes button:not([aria-pressed='true']) {
+  background: transparent;
+  box-shadow: none;
+  border-color: transparent;
+}
+.pz-modes button[aria-pressed='true'] {
+  background: linear-gradient(180deg, #e2c27a, #c9a254);
+  box-shadow: inset 0 0 0 1px var(--accent-2), inset 0 2px 4px rgba(0, 0, 0, 0.25);
+  border-color: var(--accent-2);
+}
+.pz-mode-rating {
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: rgba(58, 36, 20, 0.15);
+  color: var(--muted);
+}
+
+.pz-rating {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.pz-rating > div,
+.pz-sprint-head > div {
+  display: flex;
+  flex-direction: column;
+}
+.pz-rating strong,
+.pz-sprint-head strong,
+.pz-big strong {
+  font-family: 'Cinzel', serif;
+  font-size: 32px;
+  color: var(--accent-2);
+  line-height: 1.1;
+}
+.pz-delta {
+  font-family: 'Cinzel', serif;
+  font-weight: 700;
+  font-size: 20px;
+  padding: 2px 10px;
+  border-radius: 4px;
+  animation: pz-pop 0.35s ease-out;
+}
+.pz-delta.up {
+  color: #2f7a3b;
+  background: rgba(47, 122, 59, 0.12);
+  border: 1px solid rgba(47, 122, 59, 0.5);
+}
+.pz-delta.down {
+  color: var(--danger);
+  background: rgba(163, 34, 28, 0.1);
+  border: 1px solid rgba(163, 34, 28, 0.45);
+}
+@keyframes pz-pop {
+  from {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.pz-themes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.pz-theme {
+  font-family: 'Cinzel', serif;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 3px;
+  color: #f6e2b0;
+  background: linear-gradient(180deg, #9a2a22, #6f1611);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.3);
+}
+.pz-wide {
+  grid-column: 1 / -1;
+}
+.pz-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.pz-filter select {
+  padding: 7px;
+  border-radius: 4px;
+  font: inherit;
+}
+.panel .card a {
+  color: var(--accent-2);
+}
+.pz-attrib {
+  margin-top: 4px;
+  font-size: 11px;
+  opacity: 0.85;
+}
+
+.pz-sprint-head {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  text-align: center;
+}
+.pz-hurry {
+  animation: pz-blink 1s steps(2) infinite;
+}
+@keyframes pz-blink {
+  50% {
+    opacity: 0.45;
+  }
+}
+.pz-lives {
+  color: #a3221c !important;
+  letter-spacing: 2px;
+}
+.pz-lost {
+  color: rgba(110, 84, 52, 0.35);
+}
+.pz-over {
+  text-align: center;
+}
+.pz-big {
+  margin: 4px 0;
+}
+
+@media (max-width: 860px) {
+  .pz-modes {
+    width: 100%;
+  }
+  .pz-modes button {
+    flex: 1;
+    justify-content: center;
+    padding: 7px 6px;
+  }
+}
+@media (max-width: 420px) {
+  .pz-mode-rating {
+    display: none;
+  }
+}
