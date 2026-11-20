@@ -105,7 +105,7 @@ public/
 - [x] Trainingsmodi: 6 Eröffnungen, 3 Endspiel-Übungen (K+D, K+T, Bauernendspiel) als Startstellungen mit Aufgabe
 - [x] PGN-Export (Download) und Import mit kompletter Partie-Analyse (Tab „Analyse“, auch aus Statistik)
 - [x] Design: dunkles Theme, Animationen, WebAudio-Sounds, Handy-tauglich (390 px getestet)
-- [ ] Deploy auf GitLab/GitHub Pages
+- [x] Deploy auf GitHub Pages: https://fabiosomedia.github.io/schach-trainer/
 - **Fertig wenn:** Der Trainer ist im Alltag nutzbar und online erreichbar.
 
 ## 5. Bewertungs-Logik (Details)

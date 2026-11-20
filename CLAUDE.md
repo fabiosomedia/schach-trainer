@@ -8,6 +8,11 @@ Detaillierter Plan und Phasen-Checklisten: `PLAN.md` (nach jeder Phase abhaken).
 TypeScript · React 19 · Vite · `chess.js` (Regeln) · `react-chessboard` v5 (API: `<Chessboard options={{...}} />`)
 · `stockfish` 19 lite single-threaded WASM im Web Worker · Vitest · playwright-core (nur Smoke-Test, nutzt installiertes Edge).
 
+## Online
+https://fabiosomedia.github.io/schach-trainer/ – jeder Push auf `main` testet, baut und veröffentlicht via GitHub Actions
+(`.github/workflows/deploy.yml`). Repo: github.com/fabiosomedia/schach-trainer (öffentlich).
+`gh` liegt portabel in `C:\Users\fbrazerol\tools\gh\bin`. Commits nur mit der GitHub-noreply-Adresse (ist in der Repo-Git-Config gesetzt).
+
 ## Befehle
 Node liegt portabel in `C:\Users\fbrazerol\tools\node` (im User-PATH; in alten Shells ggf. voranstellen).
 - `npm run dev` – Dev-Server
